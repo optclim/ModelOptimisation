@@ -1,0 +1,8 @@
+{
+    "history": "Info for post processing coupled runs. ",
+    "postProcess": {
+        "comment": "Options to control post processing. Details depend on your post processing script.",
+        "script": "$OPTCLIMTOP/Demo1_example1/postDemo1run.sh",
+        "script_comment": "Full path name -- including any environment variables you might have -- to postprocessing script"
+    }
+}
