@@ -1,0 +1,4 @@
+     "dynstat_theta_mean",
+      "dynstat_salt_mean",
+      "seaice_area_mean"
+

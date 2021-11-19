@@ -1,0 +1,4 @@
+/work/n02/n02/shared/OptClim/models/ECCO/demoruns/demo1/scripts 
+has scripts used for initial demo run.
+SHuld be developed and linked to optclim
+
