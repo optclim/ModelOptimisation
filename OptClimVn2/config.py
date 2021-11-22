@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 #import Demo1  # simple demonstation model
-#import HadCM3  # only model, currently, used.
+import HadCM3  # only model, currently, used.
 import MITgcm  #... except for this one in devel
 import optClimLib
 
@@ -417,9 +417,10 @@ except NameError:  # need to create them as they do not exist
     fakeFunctions = dict()
 
 # now have lookup tables  can set values up
-#MmodelFunctions.update(HadCM3=HadCM3.HadCM3)  # lookup table for model functions to run.Your model fn goes here.
-#MmodelFunctions.update(HadAM3=HadCM3.HadCM3)  # HadAM3 is HadCM3!
+modelFunctions.update(HadCM3=HadCM3.HadCM3)  # lookup table for model functions to run.Your model fn goes here.
+modelFunctions.update(HadAM3=HadCM3.HadCM3)  # HadAM3 is HadCM3!
 #MmodelFunctions.update(Demo1=Demo1.Demo1)  # lookup table for model functions to run.Your model fn goes here.
+modelFunctions.update(MITgcm=MITgcm.MITgcm)  # lookup table for model functions to run.Your model fn goes here.
 submitFunctions.update(eddie=eddieSubmit,
                        ARC=arcSubmit,
                        slurm=slurmSubmit)  # lookup table for submission functions -- depends on architecture

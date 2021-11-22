@@ -62,7 +62,7 @@ class MITgcm(ModelSimulation.ModelSimulation):
         # do Demo1 specific cross checks if I can invent any..
 
                 # call superclass init
-        super(MITgm, self).__init__(dirPath,
+        super(MITgcm, self).__init__(dirPath,
                                      obsNames=obsNames, create=create, refDirPath=refDirPath, name=name,
                                      ppExePath=ppExePath,
                                      ppOutputFile=ppOutputFile, parameters=parameters,  # options for creating new study
