@@ -340,7 +340,9 @@ class ModelSimulation(object):
             mode = mode | stat.S_IWUSR  # mode we want is umask + write
             if os.path.exists(self.dirPath):  # got directory so need to remove it
                 shutil.rmtree(self.dirPath, onerror=optClimLib.errorRemoveReadonly)  # delete where we are making data.
-            shutil.copytree(refDirPath, self.dirPath)  # copy everything
+              #M copy links as links. User needs to be alert to this.
+              # saves 200GB input data in MITgcm! 
+            shutil.copytree(refDirPath, self.dirPath, symlinks=True)  # copy everything
             # now change the permissions so user can write
             if verbose: print("Copied files from %s to %s " % (refDirPath, self.dirPath))
             for root, dirs, files in os.walk(self.dirPath, topdown=True):  # iterate
