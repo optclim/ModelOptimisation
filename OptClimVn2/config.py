@@ -11,7 +11,9 @@ from contextlib import contextmanager
 import numpy as np
 import pandas as pd
 
-import HadCM3  # only model, currently, used.
+#import Demo1  # simple demonstation model
+#import HadCM3  # only model, currently, used.
+import MITgcm  #... except for this one in devel
 import optClimLib
 
 
@@ -91,6 +93,141 @@ def cd(newdir):
     finally:
         os.chdir(prevdir)
 
+
+def slurmSubmit(model_list, config, rootDir, verbose=False, postProcess=True, resubmit=None, Submit=True,
+                archiveDir=None, *args,
+                **kwargs):
+    """
+    In development, based on eddie (and arc) functions below.
+    Submit models to slurm,  and the next iteration in the algorithm.
+    :param model_list: a list of model configuration to submit
+    :param config: study configuration file
+    :param rootDir: root directory where files etc are to be created and found
+    :param verbose: be verbose
+    :param postProcess If true submit postprocessing.
+    :param args -- the arguments that the main script was called with.
+    :param resubmit -- default None. If not None and postProcess next iteration cmd to be submitted.
+          Normally should be the script the user ran so next stage of model running happens.
+        post processing will be submitted the main script will not be submitted. For dummy submission this doesn't do much!
+    :param Submit -- default True. If False then no jobs will be submitted.
+    :param archiveDir -- default None. If not none then where data should be archived too. TODO: write code.
+    :return: status of submission
+
+    Does the following:
+          1) Submits the post processing jobs as a task array in held state.
+
+        2) Submits (if provided) resubmit so once the array of post processing jobs has completed the next bit of the algorithm gets ran.
+        3) Submits the model simulations -- which once each one has run will release the appropriate post processing task
+
+    This algorithm is not particularly robust to failure -- if anything fails the various jobs will be sitting around
+    Releasing them will be quite tricky! You can always kill and run again!
+
+    Uses hardcoded paths to scripts to run postprocessing etc. (archer2_demo1) 
+    """
+    outputDir = os.path.join(rootDir, 'jobOutput')  # directory where output goes.
+    # try and create the outputDir
+    try:
+        os.makedirs(outputDir)
+    except OSError:
+        if not os.path.isdir(outputDir):
+            raise
+    runCode = config.runCode()
+    configName = config.name()
+    cwd = os.getcwd()  # where we are now.
+    sshCmd='" ' # dont need to ssh back into archer2. Might need the double quote
+    if postProcess:
+        modelDirFile = os.path.join(rootDir, 'tempDirList.txt')
+        # name of file containing list of directories for post processing stage
+        with open(modelDirFile, 'w') as f:
+            for m in model_list:
+                text = m.dirPath + ',' + m.ppExePath() + ',' + m.ppOutputFile() + '\n'
+                f.write(text)  # write out info for post processing job.
+        # submit the following.. Need path to postProcess.sh
+        jobName = 'PP' + config.name()
+
+        ## work out postprocess script path
+        #Mike - should be study not system dependent?
+           #M - generalise fgollowing after demo of MITgcm
+        postProcess = os.path.expandvars('$OPTCLIMTOP/ECCOv4/postRun/postProcess.slurm')
+        scriptName = os.path.expandvars('$OPTCLIMTOP/archer2/qsub.sh')
+        # need to run the resubmit through a script because qsub copies script beign run
+        # so somewhere temporary. So lose file information needed for resubmit.
+        #M Puzzled, but on archer have all sort s of directives easier to modify in a script than in here....
+        qsub_cmd = 'sbatch ' # 'qsub -l h_vmem=4G -l h_rt=00:30:00 -V '
+        #qsub_cmd += f'-cwd -e {outputDir} -o {outputDir}'
+
+       
+        # std stuff for submission
+        # means        #  4 Gbyte Mem   30 min run, cur env, curr wd, output (error & std) in OutputDir
+        # deal with runCode
+        if runCode is not None: qsub_cmd += ' -A %s ' % (runCode)
+        if len(model_list) == 0:
+            print("No models to submit -- exiting")
+            return False
+        cmd = qsub_cmd + ' -a 1-%d -H -J %s ' % (len(model_list), jobName)
+        cmd += postProcess
+        cmd += " %s %s " % (modelDirFile, config.fileName())
+        if verbose: print("postProcess task array cmd is ", cmd)
+        # run the post process and get its job id
+
+        if Submit:
+            submitCmd =  '"' + cmd + '"'
+            if verbose:
+                print("SUBMIT cmd is ", submitCmd)
+            jid = subprocess.check_output(submitCmd, shell=True)
+            #  '"' and shell=True seem necessary. Would be good to avoid both
+            # and decode from byte to string. Just use defualt which may fail..
+            jid = jid.decode()
+            postProcessJID = jid.split()[2].split('.')[0]  # extract the actual job id as a string
+            # TODO wrap this in a try/except block.
+        else:
+            postProcessJID = str(submitProcessCount)  # fake jid
+
+        if verbose: print("postProcess array job id is %s" % postProcessJID)
+        submitProcessCount += 1
+        # write the jobid + N into the model -- for later when
+        #  model gets some processing.
+
+        for indx in range(len(model_list)):
+            model_list[indx].jid = postProcessJID + '.%d' % (indx + 1)
+
+    # now (re)submit this entire script so that the next iteration in the algorithm can be ran
+    if (resubmit is not None) and postProcess:
+        # submit the next job in the iteration. -hold_jid jid means the post processing job will only run after the
+        # array of post processing jobs has ran.
+        jobName = 'RE' + configName
+        cmd = [qsub_cmd, f'-d afterok:{postProcessJID} --export=ALL  -J {jobName} {scriptName}']
+        cmd.extend(resubmit)  # add the arguments in including the programme to run..
+        cmd = ' '.join(cmd)  # convert to one string.
+        if verbose: print("Next iteration cmd is ", cmd)
+        if Submit:
+            submitCmd = '"' + cmd + '"'
+            print("SubmitCmd is ", submitCmd)
+            jid = subprocess.check_output(submitCmd, shell=True)
+            # submit the script. Good to remove shell=True and '"'
+            jid = jid.split()[2]  # extract the actual job id.
+        else:
+            jid = str(submitProcessCount)
+        submitProcessCount += 1
+        if verbose: print("Job ID for next iteration is %s" % jid)
+    # now submit the models
+    for m in model_list:
+        if postProcess:
+            # need to put the post processing job release command in the model. That is what postProcessFile does...
+            cmd = sshCmd + f' scontrol release  {m.jid} ' + '"'
+            m.createPostProcessFile(cmd)
+
+        modelSubmitName = m.submit()  # this gives the script to submit.
+        if verbose:
+            print("Submitting ", modelSubmitName)
+        if Submit:
+            subprocess.check_output(sshCmd + str(modelSubmitName) + '"', shell=True)  # submit the script
+        submitProcessCount += 1
+
+    if verbose: print("Submitted %i jobs " % (submitProcessCount))
+    return True
+
+# end of slurmSubmit
 
 def arcSubmit(model_list, config, rootDir, verbose=False, resubmit=None, *args, **kwargs):
     """
@@ -280,10 +417,12 @@ except NameError:  # need to create them as they do not exist
     fakeFunctions = dict()
 
 # now have lookup tables  can set values up
-modelFunctions.update(HadCM3=HadCM3.HadCM3)  # lookup table for model functions to run.Your model fn goes here.
-modelFunctions.update(HadAM3=HadCM3.HadCM3)  # HadAM3 is HadCM3!
+#MmodelFunctions.update(HadCM3=HadCM3.HadCM3)  # lookup table for model functions to run.Your model fn goes here.
+#MmodelFunctions.update(HadAM3=HadCM3.HadCM3)  # HadAM3 is HadCM3!
+#MmodelFunctions.update(Demo1=Demo1.Demo1)  # lookup table for model functions to run.Your model fn goes here.
 submitFunctions.update(eddie=eddieSubmit,
-                       ARC=arcSubmit)  # lookup table for submission functions -- depends on architecture
+                       ARC=arcSubmit,
+                       slurm=slurmSubmit)  # lookup table for submission functions -- depends on architecture
 # optFunctions.update(default=stdOptFunction)  # Functions to be used for optimising
 fakeFunctions.update(default=fake_fn)  # function for faking run as part of testing.
 # names for fake and optFunction

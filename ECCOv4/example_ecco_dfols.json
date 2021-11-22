@@ -108,7 +108,7 @@
         "slow.thresh_for_slow_comment": "Log cost function  change for slow converegence",
         "slow.max_slow_iters": 5,
         "slow.max_slow_iters_comment": "The number of itertions (once slow determined) to decide making slow progress",
-        "restarts.use_restarts": true,
+        "restarts.use_restarts": false,
         "restarts.use_restarts_comment": "Restart when slow convergence or too noisy",
         "restarts.use_soft_restarts": false,
         "restarts.use_soft_restarts_comment": "Use soft restart -- reuse some existing points when  restarting",

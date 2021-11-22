@@ -26,8 +26,10 @@ import os
 # often this script runs on a headless display.
 # so need to set up maplotlib (if we plot) for that case.
 # this bit of code needs to run before any other matplotlib code.
-import matplotlib
-
+try:
+    import matplotlib
+except:
+    print ("no matplotlib")
 display = os.environ.get("DISPLAY")
 if os.name == 'nt':
     display = 'windows'  # fake a display
