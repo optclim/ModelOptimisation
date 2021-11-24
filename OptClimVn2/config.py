@@ -134,7 +134,8 @@ def slurmSubmit(model_list, config, rootDir, verbose=False, postProcess=True, re
     runCode = config.runCode()
     configName = config.name()
     cwd = os.getcwd()  # where we are now.
-    sshCmd='" ' # dont need to ssh back into archer2. Might need the double quote
+    sshCmd=' ' # dont need to ssh back into archer2. Might need the double quote
+    submitProcessCount = 0  # how many processes were submitted.
     if postProcess:
         modelDirFile = os.path.join(rootDir, 'tempDirList.txt')
         # name of file containing list of directories for post processing stage
@@ -174,11 +175,12 @@ def slurmSubmit(model_list, config, rootDir, verbose=False, postProcess=True, re
             submitCmd =  '"' + cmd + '"'
             if verbose:
                 print("SUBMIT cmd is ", submitCmd)
-            jid = subprocess.check_output(submitCmd, shell=True)
+            #Mjid = subprocess.check_output(submitCmd, shell=True)
+            jid = subprocess.check_output(cmd, shell=True)
             #  '"' and shell=True seem necessary. Would be good to avoid both
             # and decode from byte to string. Just use defualt which may fail..
             jid = jid.decode()
-            postProcessJID = jid.split()[2].split('.')[0]  # extract the actual job id as a string
+            postProcessJID = jid.split()[3]  # extract the actual job id as a string
             # TODO wrap this in a try/except block.
         else:
             postProcessJID = str(submitProcessCount)  # fake jid
@@ -203,9 +205,10 @@ def slurmSubmit(model_list, config, rootDir, verbose=False, postProcess=True, re
         if Submit:
             submitCmd = '"' + cmd + '"'
             print("SubmitCmd is ", submitCmd)
-            jid = subprocess.check_output(submitCmd, shell=True)
+            jid = subprocess.check_output(cmd, shell=True)
             # submit the script. Good to remove shell=True and '"'
-            jid = jid.split()[2]  # extract the actual job id.
+            if verbose: print("jid",jid)
+            jid = jid.split()[3]  # extract the actual job id.
         else:
             jid = str(submitProcessCount)
         submitProcessCount += 1
@@ -214,14 +217,14 @@ def slurmSubmit(model_list, config, rootDir, verbose=False, postProcess=True, re
     for m in model_list:
         if postProcess:
             # need to put the post processing job release command in the model. That is what postProcessFile does...
-            cmd = sshCmd + f' scontrol release  {m.jid} ' + '"'
+            cmd = sshCmd + f' scontrol release  {m.jid} ' 
             m.createPostProcessFile(cmd)
 
         modelSubmitName = m.submit()  # this gives the script to submit.
         if verbose:
             print("Submitting ", modelSubmitName)
         if Submit:
-            subprocess.check_output(sshCmd + str(modelSubmitName) + '"', shell=True)  # submit the script
+            subprocess.check_output(sshCmd + str(modelSubmitName) , shell=True)  # submit the script
         submitProcessCount += 1
 
     if verbose: print("Submitted %i jobs " % (submitProcessCount))

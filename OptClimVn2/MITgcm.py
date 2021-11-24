@@ -29,7 +29,8 @@ class MITgcm(ModelSimulation.ModelSimulation):
 
     def __init__(self, dirPath, obsNames=None,
                  create=False, refDirPath=None, name=None, ppExePath=None,
-                 ppOutputFile=None, runTime=None, runCode=None,  # options for creating new study
+                 ppOutputFile="observations.json", 
+                 runTime=None, runCode=None,  # options for creating new study
                  update=False,  # options for updating existing study
                  verbose=False, parameters={}):
         """
@@ -70,7 +71,7 @@ class MITgcm(ModelSimulation.ModelSimulation):
                                      verbose=verbose)
         # overwrite superclass values for start and continue scripts.
         self.SubmitFiles['start'] = 'run_sbatch.sh'
-        self.SubmitFiles['continue'] = null # 'SUBMIT.cont'
+        self.SubmitFiles['continue'] = 'run_sbatch.sh' #null # 'SUBMIT.cont'
         self.postProcessFile = 'optclim_finished' # name of post-processing file
 
         if create:  # want to create model instance so do creation.

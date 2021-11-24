@@ -7,7 +7,7 @@
 #SBATCH --partition=standard
 #SBATCH --qos=short
 #SBATCH --reservation=shortqos
-#$BATCH --time=00:20:0 --nodes=1 --tasks-per-node=128
+#SBATCH --time=00:20:0 --nodes=1 --tasks-per-node=128
 
      #full archer2
      # want serial queue or maybe data analysis queue if want small scale parallel... or short queue
