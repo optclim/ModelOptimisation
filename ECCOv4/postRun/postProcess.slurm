@@ -40,7 +40,7 @@ echo pwd=$PWD
 # but note the #SBATCH is comment on Eddie.
 # Portability is secondary for models that run on Archer2!
 
-if [[ ${SGE_TASK_ID}"x" != "x ]]
+if [[ ${SGE_TASK_ID}"x" != "x" ]]
 then
 	mytask=$SGE_TASK_ID
 elif [[ ${SLURM_ARRAY_TASK_ID}"x" != "x" ]]
@@ -53,7 +53,7 @@ else
 fi
 
 echo "Array ID "$mytask
-if [ $SGE_TASK_ID > 0 ] ; then
+if [ $mytask > 0 ] ; then
     if [  ! -f $dirListFile ] ;  then
        pwd
        echo in wrong place?

@@ -25,7 +25,8 @@
 # Setup the job environment (this module needs to be loaded before any other modules)
 
 OPTCLIM_ECCO=/work/n02/n02/shared/OptClim/optclim3/ModelOptimisation/ECCOv4
-. $OPTCLIM_ECCO/case_setup
+. ./case_setup
+#. $OPTCLIM_ECCO/case_setup
 module list
 ftn --version
 

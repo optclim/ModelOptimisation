@@ -29,7 +29,7 @@ class MITgcm(ModelSimulation.ModelSimulation):
 
     def __init__(self, dirPath, obsNames=None,
                  create=False, refDirPath=None, name=None, ppExePath=None,
-                 ppOutputFile="observations.json", 
+                 ppOutputFile=None,
                  runTime=None, runCode=None,  # options for creating new study
                  update=False,  # options for updating existing study
                  verbose=False, parameters={}):
@@ -66,7 +66,7 @@ class MITgcm(ModelSimulation.ModelSimulation):
         super(MITgcm, self).__init__(dirPath,
                                      obsNames=obsNames, create=create, refDirPath=refDirPath, name=name,
                                      ppExePath=ppExePath,
-                                     ppOutputFile=ppOutputFile, parameters=parameters,  # options for creating new study
+                                     ppOutputFile="observations.json", parameters=parameters,  # options for creating new study
                                      update=update,  # options for updating existing study
                                      verbose=verbose)
         # overwrite superclass values for start and continue scripts.

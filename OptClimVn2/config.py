@@ -154,7 +154,8 @@ def slurmSubmit(model_list, config, rootDir, verbose=False, postProcess=True, re
         # need to run the resubmit through a script because qsub copies script beign run
         # so somewhere temporary. So lose file information needed for resubmit.
         #M Puzzled, but on archer have all sort s of directives easier to modify in a script than in here....
-        qsub_cmd = 'sbatch ' # 'qsub -l h_vmem=4G -l h_rt=00:30:00 -V '
+        qsub_cmd = f'sbatch -o {outputDir}/%x_%A_%a.out --chdir={rootDir}' 
+        # 'qsub -l h_vmem=4G -l h_rt=00:30:00 -V '
         #qsub_cmd += f'-cwd -e {outputDir} -o {outputDir}'
 
        
@@ -217,14 +218,17 @@ def slurmSubmit(model_list, config, rootDir, verbose=False, postProcess=True, re
     for m in model_list:
         if postProcess:
             # need to put the post processing job release command in the model. That is what postProcessFile does...
-            cmd = sshCmd + f' scontrol release  {m.jid} ' 
+            taskid=m.jid.replace(".","_")
+            print ("rpelacing dot to make taskid %s" %taskid)
+            cmd = sshCmd + f' scontrol release  {taskid} ' 
             m.createPostProcessFile(cmd)
 
         modelSubmitName = m.submit()  # this gives the script to submit.
         if verbose:
             print("Submitting ", modelSubmitName)
         if Submit:
-            subprocess.check_output(sshCmd + str(modelSubmitName) , shell=True)  # submit the script
+            subout=subprocess.check_output(sshCmd + str(modelSubmitName) , shell=True)  # submit the script
+            print("subout %s" %subout)
         submitProcessCount += 1
 
     if verbose: print("Submitted %i jobs " % (submitProcessCount))
