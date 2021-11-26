@@ -154,7 +154,6 @@ def slurmSubmit(model_list, config, rootDir, verbose=False, postProcess=True, re
         # need to run the resubmit through a script because qsub copies script beign run
         # so somewhere temporary. So lose file information needed for resubmit.
         #M Puzzled, but on archer have all sort s of directives easier to modify in a script than in here....
-        qsub_cmd = f'sbatch -o {outputDir}/%x_%A_%a.out --chdir={rootDir}' 
         # 'qsub -l h_vmem=4G -l h_rt=00:30:00 -V '
         #qsub_cmd += f'-cwd -e {outputDir} -o {outputDir}'
 
@@ -166,6 +165,7 @@ def slurmSubmit(model_list, config, rootDir, verbose=False, postProcess=True, re
         if len(model_list) == 0:
             print("No models to submit -- exiting")
             return False
+        qsub_cmd = f'sbatch -o {outputDir}/%x_%A_%a.out --chdir={rootDir}' 
         cmd = qsub_cmd + ' -a 1-%d -H -J %s ' % (len(model_list), jobName)
         cmd += postProcess
         cmd += " %s %s " % (modelDirFile, config.fileName())
@@ -199,13 +199,14 @@ def slurmSubmit(model_list, config, rootDir, verbose=False, postProcess=True, re
         # submit the next job in the iteration. -hold_jid jid means the post processing job will only run after the
         # array of post processing jobs has ran.
         jobName = 'RE' + configName
+        qsub_cmd = f'sbatch -o {outputDir}/%x_%A.out --chdir={rootDir}/..' 
         cmd = [qsub_cmd, f'-d afterok:{postProcessJID} --export=ALL  -J {jobName} {scriptName}']
         cmd.extend(resubmit)  # add the arguments in including the programme to run..
         cmd = ' '.join(cmd)  # convert to one string.
-        if verbose: print("Next iteration cmd is ", cmd)
+        if verbose: print("\n Next iteration cmd is ", cmd)
         if Submit:
             submitCmd = '"' + cmd + '"'
-            print("SubmitCmd is ", submitCmd)
+            print("\nRE SubmitCmd is ", submitCmd)
             jid = subprocess.check_output(cmd, shell=True)
             # submit the script. Good to remove shell=True and '"'
             if verbose: print("jid",jid)
@@ -219,7 +220,7 @@ def slurmSubmit(model_list, config, rootDir, verbose=False, postProcess=True, re
         if postProcess:
             # need to put the post processing job release command in the model. That is what postProcessFile does...
             taskid=m.jid.replace(".","_")
-            print ("rpelacing dot to make taskid %s" %taskid)
+            #print ("rpelacing dot to make taskid %s" %taskid)
             cmd = sshCmd + f' scontrol release  {taskid} ' 
             m.createPostProcessFile(cmd)
 

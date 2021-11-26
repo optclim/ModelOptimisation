@@ -71,6 +71,7 @@ class MITgcm(ModelSimulation.ModelSimulation):
                                      verbose=verbose)
         # overwrite superclass values for start and continue scripts.
         self.SubmitFiles['start'] = 'run_sbatch.sh'
+        #TODO - do we need the continue script - Mike thinks not the concern of OptClim.
         self.SubmitFiles['continue'] = 'run_sbatch.sh' #null # 'SUBMIT.cont'
         self.postProcessFile = 'optclim_finished' # name of post-processing file
 

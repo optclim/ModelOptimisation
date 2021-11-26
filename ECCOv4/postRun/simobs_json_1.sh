@@ -27,7 +27,7 @@ else
 fi
 
 echo "{" > $fileout
-echo "    \"simobs\": {" >> $fileout
+#echo "    \"simobs\": {" >> $fileout
 
 # check the last line of standard output
 lastline=$(tail -1 $filename)
@@ -59,6 +59,6 @@ echo "Global mean sea ice area (m^2/m^2)"
 d_im=$(grep seaice_area_mean $filename | tail -1| cut -c 57-90)
 echo "        \"seaice_area_mean\": $d_im" >>$fileout
 
-echo "    } " >> $fileout
+#echo "    } " >> $fileout
 echo "}" >> $fileout
 echo "--__--__--__--__--__--__--__--__--__--__--__--__--__--"
