@@ -88,6 +88,14 @@ class MITgcm(ModelSimulation.ModelSimulation):
         ## Set up namelist mappings. #TODO add documentation to parameters and have way of model instance reporting on known params.
         self.simpleNamelist('gravity')
         self.simpleNamelist('SEAICE_STRENGTH','SEAICE_PARM01','data.seaice')
+           #M use them...
+
+        # got some parameters and either creating or updating -- update namelist.
+        if len(parameters) > 0 and (create or update):
+            self.setReadOnly(False)  # allow modification
+            self.setParams(parameters, verbose=verbose, fail=True)  # apply namelist etc
+        self.setReadOnly(True)  # make it read only
+
 
     def simpleNamelist(self, var, nl='PARM01', nlFile='data'):
         """
@@ -154,6 +162,8 @@ class MITgcm(ModelSimulation.ModelSimulation):
             pass
 
         self.writeNameList(verbose=verbose, fail=fail, **params)  # generate/update namelists.
+           
+
 
     def createPostProcessFile(self, postProcessCmd):
 

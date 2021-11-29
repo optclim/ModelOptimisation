@@ -546,7 +546,7 @@ class ModelSubmit(object):
                 break  # stop generating models as made too many!
             # now go and create new model.
             obsNames = self.config.obsNames()
-            param['RUNID'] = name
+            #M param['RUNID'] = name
             refDir = param.pop('refDir')  # remove refDir from param dict.
             model = self.modelFn(createDir, obsNames=obsNames, create=True,
                                  name=name, runTime=runTime, runCode=runCode,

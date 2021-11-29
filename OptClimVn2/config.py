@@ -206,7 +206,7 @@ def slurmSubmit(model_list, config, rootDir, verbose=False, postProcess=True, re
         if verbose: print("\n Next iteration cmd is ", cmd)
         if Submit:
             submitCmd = '"' + cmd + '"'
-            print("\nRE SubmitCmd is ", submitCmd)
+            print("\n RE SubmitCmd is ", submitCmd)
             jid = subprocess.check_output(cmd, shell=True)
             # submit the script. Good to remove shell=True and '"'
             if verbose: print("jid",jid)
