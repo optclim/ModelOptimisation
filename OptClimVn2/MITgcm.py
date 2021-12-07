@@ -3,6 +3,12 @@ Class to support MITgcm in optimisation (and other approaches) work.
 
 """
 # TODO use pathlib.
+import collections
+import copy
+import json
+#M need all 3 above?
+import stat
+import tempfile
 
 import fileinput
 # TODO -- now have version 1.0X of f90nml may not need to patch here.
@@ -78,8 +84,8 @@ class MITgcm(ModelSimulation.ModelSimulation):
         if create:  # want to create model instance so do creation.
             #self.fixClimFCG()  # fix the ClimFGC namelist
 #            self.modifySubmit(runTime=runTime, runCode=runCode)  # modify the Submit script
-            self.modifyScript()  # modify Script
-            self.createWorkDir(refDirPath)  # create the work dirctory (and fill it in)
+         #M   self.modifyScript()  # modify Script
+          #M  self.createWorkDir(refDirPath)  # create the work dirctory (and fill it in)
 #            self.genContSUBMIT()  # generate the continuation script.
             self.createPostProcessFile("# No job to release")
             # this means that the model can run without post-processing
@@ -131,6 +137,94 @@ class MITgcm(ModelSimulation.ModelSimulation):
         :return:
         """
         return 
+
+    def writeNameList(self, verbose=False, fail=False, **params):
+        # TODO make parameters a simple dict rather than kwargs
+        """
+        Modify existing namelist files using information generated via genConversion
+        Existing files will be copied to .bak
+        :param verbose (optional -- default is False). If True provide more information on what is going on.
+        :param fail (optional default is False). If True fail if a parameter not found.
+        :keyword arguments are parameters and values.
+        :return:  ordered dict of parameters and values used.
+        """
+        if self._readOnly:
+            raise IOError("Model is read only")
+
+        params_used = collections.OrderedDict()  #
+        files = collections.OrderedDict()  # list of files to be modified.
+        for param, value in params.items():  # extract data from conversion indexed by file --
+            # could this code be moved into genVarToNameList as really a different view of the same data.
+            # NO as we would need to do this only once we've finished generating namelist translate tables.
+            # potential optimisation might be to cache this and trigger error in writeNameList if called after genNameList
+            # search functions first
+            if param in self._metaFn:  # got a meta function.
+                if verbose: print(f"Running function {self._metaFn[param].__name__}")
+                metaFnValues = self._metaFn[param](value)  # call the meta param function which returns a dict
+                params_used[param] = metaFnValues  # and update return var
+                for conv, v in metaFnValues.items():  # iterate over result of fn.
+                    if conv.file not in files:
+                        files[conv.file] = []  # if not come across the file set it to empty list
+                    files[conv.file].append((v, conv))  # append the  value  & conversion info.
+            elif param in self._convNameList:  # got it in convNameList ?
+                for conv in self._convNameList[param]:
+                    if conv.file not in files:
+                        files[conv.file] = []  # if not come across the file set it to empty list
+                    files[conv.file].append((value, conv))  # append the value  & conversion
+                    params_used[param] = value  # and update return var
+            elif fail:
+
+                       raise KeyError("Failed to find %s in metaFn or convNameList " % param)
+            else:
+                pass
+        print(" MITgcm writeNameList\n")
+        parser=f90nml.Parser()
+        parser.comment_tokens += '#'
+
+        # now have conversion tuples ordered by file so let's process the files
+        for file in files.keys():  # iterate over files
+            # need to create backup? Only do if no back up exists. This allows generateNameList to be run multiple times
+            # doing updates. First time it runs we assume we have a directory ready to be modified.
+            filePath = os.path.join(self.dirPath, file)  # full path to namelist file
+            # check file exists if not raise exception
+            if not os.path.isfile(filePath):
+                # raise IOError("file %s does not exist"%(filePath))
+                continue  # skip this file.
+            backup_file = filePath + "_nl.bak"  # and full path to backup fie.
+            if not os.path.isfile(backup_file):
+                shutil.copyfile(filePath, backup_file)
+            # now create the namelist file.
+            with open(filePath) as nmlFile:
+                nl = parser.read(nmlFile)
+            nl.end_comma = True
+            nl.uppercase = True
+            nl.logical_repr = ('.FALSE.', '.TRUE.')  # how to reprsetn false and true
+            # Need a temp file
+            with tempfile.NamedTemporaryFile(dir=self.dirPath, delete=False, mode='w') as tmpNL:
+                # Now construct the patch for the  namelist file for all conversion tuples.
+
+                for (value, conv) in files[file]:
+                    if conv.namelist not in nl:
+                        nl[conv.namelist] = collections.OrderedDict()  # don't have ordered dict so make it
+                    if type(value) is np.ndarray:  # convert numpy array to list for writing.
+                        value = value.tolist()
+                    elif isinstance(value, str):  # may not be needed at python 3
+                        value = str(value)  # f90nml can't cope with unicode so convert it to string.
+                    nl[conv.namelist][conv.var] = copy.copy(
+                        value)  # copy the variable to be stored rather than the name.
+                    if verbose:
+                        print("Setting %s,%s to %s in %s" % (conv.namelist, conv.var, value, filePath))
+                try:
+                    nl.write(tmpNL.name, force=True)
+                except StopIteration:
+                    print("Problem in f90nml for %s writing to %s" % (filePath, tmpNL.name), nl)
+                    raise  # raise exception.
+
+            if verbose: print("Patched %s to %s" % (filePath, tmpNL.name))
+            os.replace(tmpNL.name, filePath)  # and copy the modified file back in place.
+
+        return params_used
+
     def setParams(self, params, addParam=True, write=True, verbose=False, fail=True):
         """
         Set the parameter values and write them to the configuration file
