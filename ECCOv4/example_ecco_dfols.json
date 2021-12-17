@@ -24,15 +24,15 @@
     "comment":"Information relevant to parameters.",
     "defaultParams": {
       "comment": "Default parameter values for HadAM3. null values or not set mean don't modify. Checked against wiki 11/5/17 ",
-      "gravity": 10.1,
-      "SEAICE_STRENGTH": 2.1e-4
+      "gravity": 9.81,
+      "SEAICE_STRENGTH": 2.1e+4
     },
     "initParams": {
-      "comment":"Intial values for parameters to be optimised. Set to null to use default values. Values below very close to std",
-      "gravity": 9.81,
-      "SEAICE_STRENGTH": 2.25e-4
+      "comment":"Intial values for parameters to be optimised. Set to null to use default values. Values below very close to std - 0 min, 1 max values",
+      "gravity": 0,
+      "SEAICE_STRENGTH": 1,
     },
-    "initScale": false,
+    "initScale": true,
     "initScale_comment": "If true then startParams range from 0 to 1 where 0 means min value; 1 max value.",
     "fixedParams":{
         "comment":" List of parameters and values that are fixed and not modified in optimisation. Set to null to use default values"
@@ -46,14 +46,14 @@
       10.5
     ],
     "SEAICE_STRENGTH": [
-      2.0e-4,
-      2.5e-4
+      2.0e+4,
+      2.5e+4
     ]
   },
     "steps": {
     "comment": "Steps for perturbations -- norm around 10% of the range. If not specified 10% will be used. Values below have been somewhat tuned.",
     "gravity": 0.1,
-    "SEAICE_STRENGTH": 0.5e-5
+    "SEAICE_STRENGTH": 0.5e+3
   }
   },
   "study": {
@@ -98,7 +98,7 @@
             "rhobeg_comment": "Radius of parameter trust region at start",
             "rhoend": 0.1,
             "rhoend_comment": "Radius of paramter trust region for termination (for our purpose this is in normalised parameters)",
-            "maxfun": 90,
+            "maxfun": 10,
             "maxfun_comment": "Maximum number of model evaluations to be done. Default is O(1000). 15/19 reduced to 90 so have data to do a mid-point look at  ",
             "scaling_within_bounds": true,
             "scaling_within_bounds_comment": "Scale internally so all in range 0 to 1",
