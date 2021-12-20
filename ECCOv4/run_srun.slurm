@@ -12,19 +12,17 @@
     # SHORT RUN under 20 mins
 #SBATCH --partition=standard
 #SBATCH --qos=short
-#SBATCH --reservation=shortqos
 #SBATCH --account=n02-optclim --time=00:20:0 --nodes=1 --tasks-per-node=96 
 
 #SBATCH --export=none
 
     # remove space to uncomment long run options
-# SBATCH --partition=standard
 # SBATCH --qos=standard
 
 
 # Setup the job environment (this module needs to be loaded before any other modules)
 
-OPTCLIM_ECCO=/work/n02/n02/shared/OptClim/optclim3/ModelOptimisation/ECCOv4
+OPTCLIM_ECCO=/work/n02/shared/mjmn02/OptClim/optclim3/ModelOptimisation/ECCOv4
 . ./case_setup
 #. $OPTCLIM_ECCO/case_setup
 module list

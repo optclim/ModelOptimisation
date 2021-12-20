@@ -30,7 +30,7 @@
     "initParams": {
       "comment":"Intial values for parameters to be optimised. Set to null to use default values. Values below very close to std - 0 min, 1 max values",
       "gravity": 0,
-      "SEAICE_STRENGTH": 1,
+      "SEAICE_STRENGTH": 1
     },
     "initScale": true,
     "initScale_comment": "If true then startParams range from 0 to 1 where 0 means min value; 1 max value.",
@@ -58,7 +58,7 @@
   },
   "study": {
     "comment": "Parameters that specify the study. Used by framework and not by optimisation routines",
-    "referenceModelDirectory":"$OPTCLIMTOP/ECCOv4/Configurations/base1",
+    "referenceModelDirectory":"/work/n02/shared/mjmn02/OptClim/optclim3/base/ecco/base1",
     "referenceModelDirectory_comment":"Directory where reference model configuration exists. ",
     "covariance": {
       "comment": "Covariance matrices and operations on them. If CovObsErr and CovIntVar are *both* specified then CovTotal will be computed from them",

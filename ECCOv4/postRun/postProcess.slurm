@@ -4,10 +4,10 @@
 #   SLURM directives assume short queue
 
     # 4 node system: SHORT RUN under 20 mins
-#SBATCH --partition=standard
-#SBATCH --qos=short
-#SBATCH --reservation=shortqos
-#SBATCH --time=00:20:0 --nodes=1 --tasks-per-node=128
+#SBATCH --partition=serial
+#SBATCH --qos=serial
+#SBATCH --time=00:20:0 --nodes=1 
+#SBATCH --mem=4G
 
      #full archer2
      # want serial queue or maybe data analysis queue if want small scale parallel... or short queue
