@@ -20,7 +20,7 @@ fi
 
 if test -z "$2" 
 then
-	echo "not got arg1 in $0"
+	echo "not got arg2 in $0"
     exit  1
 else
     fileout=$2

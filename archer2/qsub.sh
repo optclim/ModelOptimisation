@@ -1,20 +1,23 @@
 #!/usr/bin/env bash
 
-    # 4 node system: SHORT RUN under 20 mins
 #SBATCH --partition=serial
 #SBATCH --qos=serial
 #SBATCH --time=00:20:0 --nodes=1 
 #SBATCH --mem=4G
 
-     #full archer2
-     # want serial queue or maybe data analysis queue if want small scale parallel... or short queue
+# for now using serial queue. Future, maybe data analysis queue 
+# if want small scale parallel... or short queue
 
+# About to  exportign the environment of the call to sbatch
 # prefer not to use this unless we have to!
+# maybe pass PYTHONPATH and PATH explicitly in future....
+# Fear is the context is ill defined and so not reproducible with export all.
+
 #SBATCH --export=ALL 
 
-# use this to test, as its passed from config.sh
-
-#SBATCH --account=n02-optclim
+# remove? # use this to test, as its passed from config.sh:
+# remove? # comment out otherwise
+# remove? #SBATCH --account=n02-optclim
 
 
 # script to be run by qsub to run next iteration.
