@@ -20,12 +20,12 @@ import re
 import shutil
 import pathlib
 import datetime # needed to parse strings
-import f90nml
-# NEEDED because f90nml.patch (as used in ModelSimulation) fails with RECONA. For the moment dealing with this here.
 import numpy as np
 import stat # needed to change file permission bits.
 import ModelSimulation
 from ModelSimulation import _namedTupClass
+import subprocess
+
 
 
 class CESM(ModelSimulation.ModelSimulation):
@@ -70,7 +70,8 @@ class CESM(ModelSimulation.ModelSimulation):
 
                 # call superclass init
         super(CESM, self).__init__(dirPath,
-                                     obsNames=obsNames, create=create, refDirPath=refDirPath, name=name,
+                                     obsNames=obsNames, create=create, 
+                                     refDirPath=refDirPath, name=name,
                                      ppExePath=ppExePath,
                                      ppOutputFile="observations.csv", parameters=parameters,  # options for creating new study
                                      update=update,  # options for updating existing study
@@ -111,7 +112,7 @@ class CESM(ModelSimulation.ModelSimulation):
         :return: none
         """
         nl="cesm_dummy"
-        self.genVarToNameList(var, nameListVar=var(), nameListName=nl, nameListFile=nlFile)
+        self.genVarToNameList(var, nameListVar=var, nameListName=nl, nameListFile=nlFile)
 
     def simpleNamelist(self, var, nl='PARM01', nlFile='data'):
         """
@@ -148,6 +149,69 @@ class CESM(ModelSimulation.ModelSimulation):
         """
         return 
 
+    def createModelSimulation(self, parameters, ppExePath=None, obsNames=None, name=None,
+                              ppOutputFile=None, refDirPath=None, verbose=False):
+        """
+        Create (in filesystem) a model simulation. After creation the simulation will be read only.
+        :param parameters -- dict of parameter names and values OR pandas series.
+        :param ppExePath --  path to post processing executable -- Default None
+        :param obsNames -- list of observations being used. -- Default None
+        :param  name ((optional)) -- name of the model simulation. If not provided will be taken from dirPath
+        :param  ppOutputFile (optional)  -- name of output file where output from postprcessing is (default comes from config)
+        :param refDirPath (optional) -- reference directory. Copy all files from here into dirPath
+        :param  verbose (optional) -- if true be verbose. Default is False
+        """
+        # general setup
+        self._readOnly = False  # can write if wanted.
+
+        if refDirPath is not None:
+            refDirPath = os.path.expandvars(os.path.expanduser(refDirPath))
+        #  fill out configuration information.
+        config = collections.OrderedDict()
+        if name is None:
+            config['name'] = os.path.basename(self.dirPath)
+        else:
+            config['name'] = name
+#        import pdb;pdb.set_trace()
+
+        obs = collections.OrderedDict()
+        try:
+            for k in obsNames: obs[k] = None
+        except TypeError:
+            pass
+
+        config['ppExePath'] = ppExePath
+        config['ppOutputFile'] = ppOutputFile
+        if refDirPath is not None: config['refDirPath'] = refDirPath
+
+        config['observations'] = obs
+        config['parameters'] = parameters
+
+        config['newSubmit'] = True  # default is that run starts normally.
+        config['history'] = dict()  # where we store history information. Stores info on resubmit, continue information.
+
+        if verbose:   print("Config is ", config)
+
+        if os.path.exists(self.dirPath):  # delete the directory (if it currently exists)
+            shutil.rmtree(self.dirPath, onerror=optClimLib.errorRemoveReadonly)
+
+        if refDirPath is not None:  # copy all files and directories from refDir
+
+            # use CESD/CIME to clone 
+            # command line for now - maybe use CIME python classes later...?
+            clonecmd=os.path.expandvars('$OPTCLIMTOP/CESM/optclim_clone_cesm.sh')
+            clonecmd+=" %s %s " %(refDirPath, self.dirPath)
+            if verbose: print("clonecmd is ", clonecmd)
+            procStdOut = subprocess.check_output(clonecmd, shell=True)
+             # expect error of error msg env_mach_specific.xml already exists, delete to replace
+            if verbose:   print("Clone output  is ", procStdOut)
+
+        self.set(config)  # set (and write) configuration
+        # TODO add setParams call here..
+        # and no longer able to write to it.
+        self._readOnly = True
+
+
     def writeNameList(self, verbose=False, fail=False, **params):
         # TODO make parameters a simple dict rather than kwargs
         """
@@ -158,7 +222,7 @@ class CESM(ModelSimulation.ModelSimulation):
         :keyword arguments are parameters and values.
         :return:  ordered dict of parameters and values used.
         """
-        import pdb; pdb.set_trace() 
+#        import pdb; pdb.set_trace() 
 
         if self._readOnly:
             raise IOError("Model is read only")
@@ -171,6 +235,7 @@ class CESM(ModelSimulation.ModelSimulation):
             # potential optimisation might be to cache this and trigger error in writeNameList if called after genNameList
             # search functions first
             if param in self._metaFn:  # got a meta function.
+                #not supporting these yet.... 
                 if verbose: print(f"Running function {self._metaFn[param].__name__}")
                 metaFnValues = self._metaFn[param](value)  # call the meta param function which returns a dict
                 params_used[param] = metaFnValues  # and update return var
@@ -189,9 +254,7 @@ class CESM(ModelSimulation.ModelSimulation):
                        raise KeyError("Failed to find %s in metaFn or convNameList " % param)
             else:
                 pass
-        print(" CESM writeNameList\n")
-        parser=f90nml.Parser()
-        parser.comment_tokens += '#'
+        print(" CESM writeNameList done sorting\n")
 
         # now have conversion tuples ordered by file so let's process the files
         for file in files.keys():  # iterate over files
@@ -205,36 +268,28 @@ class CESM(ModelSimulation.ModelSimulation):
             backup_file = filePath + "_nl.bak"  # and full path to backup fie.
             if not os.path.isfile(backup_file):
                 shutil.copyfile(filePath, backup_file)
-            # now create the namelist file.
-            with open(filePath) as nmlFile:
-                nl = parser.read(nmlFile)
-            nl.end_comma = True
-            nl.uppercase = True
-            nl.logical_repr = ('.FALSE.', '.TRUE.')  # how to reprsetn false and true
-            # Need a temp file
-            with tempfile.NamedTemporaryFile(dir=self.dirPath, delete=False, mode='w') as tmpNL:
+            # now append to the file ujsed for CESM
+            fcesmfile=open(filePath,mode='a')
+             # make aloose-coupling file - to allow easy model-specifci code to 
+             # kn ow what is going on. Really expecting to do this with UKESM
+             # but coding while we are here - and enabling a crude test also
+             # for ukesm drop the tst and Tst
+
+            lcPath = os.path.join(self.dirPath, file+".tst") 
+            floose=open(lcPath,mode='a')
                 # Now construct the patch for the  namelist file for all conversion tuples.
 
-                for (value, conv) in files[file]:
-                    if conv.namelist not in nl:
-                        nl[conv.namelist] = collections.OrderedDict()  # don't have ordered dict so make it
+            for (value, conv) in files[file]:
                     if type(value) is np.ndarray:  # convert numpy array to list for writing.
                         value = value.tolist()
                     elif isinstance(value, str):  # may not be needed at python 3
                         value = str(value)  # f90nml can't cope with unicode so convert it to string.
-                    nl[conv.namelist][conv.var] = copy.copy(
-                        value)  # copy the variable to be stored rather than the name.
+                    fcesmfile.write("%s = %s\n"%(conv.var, value))
+                    floose.write("%s, %s\n"%(conv.var+'Tst', value))
                     if verbose:
                         print("Setting %s,%s to %s in %s" % (conv.namelist, conv.var, value, filePath))
-                try:
-                    nl.write(tmpNL.name, force=True)
-                except StopIteration:
-                    print("Problem in f90nml for %s writing to %s" % (filePath, tmpNL.name), nl)
-                    raise  # raise exception.
-
-            if verbose: print("Patched %s to %s" % (filePath, tmpNL.name))
-            os.replace(tmpNL.name, filePath)  # and copy the modified file back in place.
-
+            fcesmfile.close()
+            floose.close()
         return params_used
 
     def setParams(self, params, addParam=True, write=True, verbose=False, fail=True):

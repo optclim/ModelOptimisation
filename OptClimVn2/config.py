@@ -14,6 +14,7 @@ import pandas as pd
 #import Demo1  # simple demonstation model
 import HadCM3  # only model, currently, used.
 import MITgcm  #... except for this one in devel
+import CESM  #... except for this one also in devel
 import optClimLib
 
 
@@ -145,12 +146,11 @@ def slurmSubmit(model_list, config, rootDir, verbose=False, postProcess=True, re
                 f.write(text)  # write out info for post processing job.
         # submit the following.. Need path to postProcess.sh
         jobName = 'PP' + config.name()
-
-        ## work out postprocess script path
-        #Mike - should be study not system dependent?
-           #M - generalise fgollowing after demo of MITgcm
-        postProcess = os.path.expandvars('$OPTCLIMTOP/ECCOv4/postRun/postProcess.slurm')
-        scriptName = os.path.expandvars('$OPTCLIMTOP/archer2/qsub.sh')
+              # note this is the job in the array, for after a simulation
+              # The study-specific code (calulatioin) is in the file in 
+              # config json file.
+        postProcess = os.path.expandvars('$OPTCLIMTOP/archer2/postProcess.slurm')
+        scriptName = os.path.expandvars('$OPTCLIMTOP/archer2/qsub.slurm')
         # need to run the resubmit through a script because qsub copies script beign run
         # so somewhere temporary. So lose file information needed for resubmit.
         #M Puzzled, but on archer have all sort s of directives easier to modify in a script than in here....
@@ -161,11 +161,11 @@ def slurmSubmit(model_list, config, rootDir, verbose=False, postProcess=True, re
         # std stuff for submission
         # means        #  4 Gbyte Mem   30 min run, cur env, curr wd, output (error & std) in OutputDir
         # deal with runCode
-        if runCode is not None: qsub_cmd += ' -A %s ' % (runCode)
         if len(model_list) == 0:
             print("No models to submit -- exiting")
             return False
         qsub_cmd = f'sbatch -o {outputDir}/%x_%A_%a.out --chdir={rootDir}' 
+        if runCode is not None: qsub_cmd += ' -A %s ' % (runCode)
         cmd = qsub_cmd + ' -a 1-%d -H -J %s ' % (len(model_list), jobName)
         cmd += postProcess
         cmd += " %s %s " % (modelDirFile, config.fileName())
@@ -431,6 +431,7 @@ modelFunctions.update(HadCM3=HadCM3.HadCM3)  # lookup table for model functions 
 modelFunctions.update(HadAM3=HadCM3.HadCM3)  # HadAM3 is HadCM3!
 #MmodelFunctions.update(Demo1=Demo1.Demo1)  # lookup table for model functions to run.Your model fn goes here.
 modelFunctions.update(MITgcm=MITgcm.MITgcm)  # lookup table for model functions to run.Your model fn goes here.
+modelFunctions.update(CESM=CESM.CESM)  # lookup table for model functions to run.Your model fn goes here.
 submitFunctions.update(eddie=eddieSubmit,
                        ARC=arcSubmit,
                        slurm=slurmSubmit)  # lookup table for submission functions -- depends on architecture
