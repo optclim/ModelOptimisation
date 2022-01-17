@@ -2,6 +2,11 @@
 
 # maybe use serial queue, but its fast enough to be on login I think...?
 
+if [[ ${OPTCLIMTOP}"x" == "x" ]]
+then
+	. ~/setup_optclim2.sh
+fi
+
 if [[ ${CIMEROOT}"x" == "x" ]]
 then
 	. ~/.cime/lite_setup_for_cesm
@@ -34,6 +39,16 @@ cd ${NEWCASEDIR}
 # check documentation for whant namelists get built - in submit or here.
 ##?./case.setup --reset # ? superfluous:
 # after made edits: ./case.build
+
+COPYING="$OPTCLIMTOP/CESM/optclim_submit_cesm.sh"
+if [[ -f $COPYING ]]
+then
+  cp $COPYING .
+else
+	echo not found $COPYING to be copied
+	exit 1
+fi
+
 
 
 

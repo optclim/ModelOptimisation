@@ -53,7 +53,7 @@ class CESM(ModelSimulation.ModelSimulation):
             :param refDirPath -- reference directory. Copy all files from here into dirPath
             :param name -- name of the model simulation. If not provided will be taken from dirPath
             :param ppExePath --  path to post processing executable
-            :param ppOutputFile -- File name of output of post processing executable. Default is observations.nc
+            :param ppOutputFile -- File name of output of post processing executable. Default is observations.json
             :param obsNames -- list of observations to be readin. (see readObs())
             :param runTime -- run time in seconds for UM job. If set to None nothing is changed.
             :param runCode -- code to be used by Job.
@@ -73,13 +73,14 @@ class CESM(ModelSimulation.ModelSimulation):
                                      obsNames=obsNames, create=create, 
                                      refDirPath=refDirPath, name=name,
                                      ppExePath=ppExePath,
-                                     ppOutputFile="observations.csv", parameters=parameters,  # options for creating new study
+                                     ppOutputFile="observations.json", parameters=parameters,  # options for creating new study
                                      update=update,  # options for updating existing study
                                      verbose=verbose)
         # overwrite superclass values for start and continue scripts.
-        self.SubmitFiles['start'] = 'cesm_run_batch.sh'
+        self.SubmitFiles['start'] = 'optclim_submit_cesm.sh'
         #TODO - do we need the continue script - Mike thinks not the concern of OptClim.
-        self.SubmitFiles['continue'] = 'run_sbatch.sh' #null # 'SUBMIT.cont'
+        # but not changing the code in case I'm wrong.
+        self.SubmitFiles['continue'] = 'nonexistent.sh' #null # 'SUBMIT.cont'
         self.postProcessFile = 'optclim_finished' # name of post-processing file
 
         if create:  # want to create model instance so do creation.
@@ -285,7 +286,7 @@ class CESM(ModelSimulation.ModelSimulation):
                     elif isinstance(value, str):  # may not be needed at python 3
                         value = str(value)  # f90nml can't cope with unicode so convert it to string.
                     fcesmfile.write("%s = %s\n"%(conv.var, value))
-                    floose.write("%s, %s\n"%(conv.var+'Tst', value))
+                    floose.write("%s, %s\n"%(conv.var+'_tst', value))
                     if verbose:
                         print("Setting %s,%s to %s in %s" % (conv.namelist, conv.var, value, filePath))
             fcesmfile.close()
@@ -324,6 +325,24 @@ class CESM(ModelSimulation.ModelSimulation):
 
         self.writeNameList(verbose=verbose, fail=fail, **params)  # generate/update namelists.
            
+
+    def remove_submit(self, runStatus=None):
+        """
+        Provides full path to submit script.
+        :param runStatus (default None)-- If 'start' return path to new submit script (defined in self.SubmitFile)
+                                      If 'continue' return path to continuation submit script (defined in self.SubmitFile)
+                            If None then use value from runStatus method to chose.
+        :return: path to appropriate submit script that should be ran to submit the model
+        """
+
+        if runStatus is None:
+            newSubmit = self.runStatus()
+        else:
+            newSubmit = runStatus
+        script=os.path.expandvars('$OPTCLIMTOP/CESM/optclim_submit_cesm.sh')
+# in CESM only start?       script = pathlib.Path(self.dirPath)/self.SubmitFiles[newSubmit]
+
+        return script
 
 
     def createPostProcessFile(self, postProcessCmd):

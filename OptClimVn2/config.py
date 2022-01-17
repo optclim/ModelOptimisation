@@ -202,6 +202,7 @@ def slurmSubmit(model_list, config, rootDir, verbose=False, postProcess=True, re
 #        my_cwd=os.getcwd()
         jobName = 'RE' + configName
         qsub_cmd = f'sbatch -o {outputDir}/%x_%A.out '# --chdir={my_cwd}' 
+        if runCode is not None: qsub_cmd += ' -A %s ' % (runCode)
         cmd = [qsub_cmd, f'-d afterok:{postProcessJID} --export=ALL  -J {jobName} {scriptName}']
         cmd.extend(resubmit)  # add the arguments in including the programme to run..
         cmd = ' '.join(cmd)  # convert to one string.

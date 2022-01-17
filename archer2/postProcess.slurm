@@ -1,23 +1,17 @@
 #!/bin/bash
 # this is a "post-run" job to extract simulated obs for one run.
 
-#   SLURM directives assume short queue
-
-    # 4 node system: SHORT RUN under 20 mins
 #SBATCH --partition=serial
 #SBATCH --qos=serial
 #SBATCH --time=00:20:0 --nodes=1 
 #SBATCH --mem=4G
-
-     #full archer2
-     # want serial queue or maybe data analysis queue if want small scale parallel... or short queue
 
 # prefer not to use this unless we have to!
 #SBATCH --export=ALL 
 
 # use this to test, as its passed from config.sh
 
-#SBATCH --account=n02-optclim
+# SBATCH --account=n02-optclim
 
 module list
 
