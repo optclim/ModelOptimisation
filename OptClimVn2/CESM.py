@@ -256,6 +256,13 @@ class CESM(ModelSimulation.ModelSimulation):
             else:
                 pass
         print(" CESM writeNameList done sorting\n")
+             # make aloose-coupling file - to allow easy model-specifci code to 
+             # kn ow what is going on. Really expecting to want this with UKESM
+             # to hold parameter values, here  enabling a crude test also
+             # for ukesm drop the tst and Tst
+             # so FOR TESTING -make obs that are the parameters!
+        lcPath = os.path.join(self.dirPath, "observations.json")
+        looseDict={} # in CESM for test case only use!
 
         # now have conversion tuples ordered by file so let's process the files
         for file in files.keys():  # iterate over files
@@ -271,26 +278,26 @@ class CESM(ModelSimulation.ModelSimulation):
                 shutil.copyfile(filePath, backup_file)
             # now append to the file ujsed for CESM
             fcesmfile=open(filePath,mode='a')
-             # make aloose-coupling file - to allow easy model-specifci code to 
-             # kn ow what is going on. Really expecting to do this with UKESM
-             # but coding while we are here - and enabling a crude test also
-             # for ukesm drop the tst and Tst
-
-            lcPath = os.path.join(self.dirPath, file+".tst") 
-            floose=open(lcPath,mode='a')
-                # Now construct the patch for the  namelist file for all conversion tuples.
-
+                # Now write to appropriate file each param
+                # format is just parname = value.
+                # CESM in building the model run takes this into namelists.
             for (value, conv) in files[file]:
                     if type(value) is np.ndarray:  # convert numpy array to list for writing.
                         value = value.tolist()
                     elif isinstance(value, str):  # may not be needed at python 3
                         value = str(value)  # f90nml can't cope with unicode so convert it to string.
                     fcesmfile.write("%s = %s\n"%(conv.var, value))
-                    floose.write("%s, %s\n"%(conv.var+'_tst', value))
                     if verbose:
                         print("Setting %s,%s to %s in %s" % (conv.namelist, conv.var, value, filePath))
+                    looseDict[conv.var+"_tst"]=value
+                    
             fcesmfile.close()
-            floose.close()
+
+                # wite json file into the simulation directory
+
+        floose=open(lcPath,mode='w')
+        json.dump(looseDict, floose,indent=4)
+        floose.close()
         return params_used
 
     def setParams(self, params, addParam=True, write=True, verbose=False, fail=True):
