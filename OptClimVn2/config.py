@@ -15,6 +15,10 @@ import pandas as pd
 import HadCM3  # only model, currently, used.
 import MITgcm  #... except for this one in devel
 import CESM  #... except for this one also in devel
+import UKESM  #... except for this one also in devel
+
+# TODO ?  seems awkward having to import these 
+
 import optClimLib
 
 
@@ -427,12 +431,16 @@ except NameError:  # need to create them as they do not exist
     submitFunctions = dict()
     fakeFunctions = dict()
 
+# TODO WHy below have all the options we cant use at once?
+# TODO Need  config have model depenednces
+
 # now have lookup tables  can set values up
 modelFunctions.update(HadCM3=HadCM3.HadCM3)  # lookup table for model functions to run.Your model fn goes here.
 modelFunctions.update(HadAM3=HadCM3.HadCM3)  # HadAM3 is HadCM3!
 #MmodelFunctions.update(Demo1=Demo1.Demo1)  # lookup table for model functions to run.Your model fn goes here.
 modelFunctions.update(MITgcm=MITgcm.MITgcm)  # lookup table for model functions to run.Your model fn goes here.
 modelFunctions.update(CESM=CESM.CESM)  # lookup table for model functions to run.Your model fn goes here.
+modelFunctions.update(UKESM=UKESM.UKESM)  # lookup table for model functions to run.Your model fn goes here.
 submitFunctions.update(eddie=eddieSubmit,
                        ARC=arcSubmit,
                        slurm=slurmSubmit)  # lookup table for submission functions -- depends on architecture

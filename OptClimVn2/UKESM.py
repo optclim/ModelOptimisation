@@ -93,10 +93,13 @@ class UKESM(ModelSimulation.ModelSimulation):
             # this means that the model can run without post-processing
             # as this bit of code also allows the model to resubmit from an NRUN
 
-        ## Set up namelist mappings. #TODO add documentation to parameters and have way of model instance reporting on known params.
-        self.simpleNamelist('gravity')
-        self.simpleNamelist('SEAICE_STRENGTH','SEAICE_PARM01','data.seaice')
-           #M use them...
+        ## Set up namelist mappings. 
+        
+        #TODO add documentation to parameters and have way of model instance reporting on known params.
+        # these are examples for initial tests and not likely used in test model
+
+        self.simpleNamelist('iau_nontrop_max_p','iau_nl','atmos/ATMOSCNTL')
+        self.simpleNamelist('diagcloud_qn_compregimelimit','iau_nl','atmos/ATMOSCNTL')
 
         # got some parameters and either creating or updating -- update namelist.
         if len(parameters) > 0 and (create or update):
@@ -113,7 +116,8 @@ class UKESM(ModelSimulation.ModelSimulation):
         :param (optional) nlFile -- name of file for namelist. 
         :return: none
         """
-        self.genVarToNameList(var, nameListVar=var.upper(), nameListName=nl, nameListFile=nlFile)
+        # Mike removed "var.upper()"
+        self.genVarToNameList(var, nameListVar=var, nameListName=nl, nameListFile=nlFile)
 
 
     def createWorkDir(self, refDirPath, verbose=False):
@@ -205,9 +209,9 @@ class UKESM(ModelSimulation.ModelSimulation):
           # the polling task that ocmmunicates to PUMA looks for these files
           # no content is needed in the file.        
 
-        flagFile=os.path.join(self.dirPath, "Q")
+        flagFile=os.path.join(self.dirPath, "state")
         fflag=open(flagfile,mode='a')
-        fflag.write("007")
+        fflag.write("NEW")
         fflag.close() 
 
                # NEXT BIT IS A HACK FOR TESTING
