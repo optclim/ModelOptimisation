@@ -234,7 +234,7 @@ def slurmSubmit(model_list, config, rootDir, verbose=False, postProcess=True, re
         modelSubmitName = m.submit()  # this gives the script to submit.
         if verbose:
             print("Submitting ", modelSubmitName)
-        if Submit:
+        if modelSubmitName and Submit:
             subout=subprocess.check_output(sshCmd + str(modelSubmitName) , shell=True)  # submit the script
             print("subout %s" %subout)
         submitProcessCount += 1

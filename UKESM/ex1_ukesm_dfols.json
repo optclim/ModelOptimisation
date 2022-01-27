@@ -14,7 +14,7 @@
   "runCode":"n02-optclim",
   "runCode_comment":"Project coce to run job under.",
   "runUpgrade_vn3":"For vn3 put all runXXX stuff in a runInfo block.",
-
+  "looseCoupled":"dont submit normally",
   "machineName": "slurm",
   "machineName_comment": "Name of machine to submit runs to",
   "modelName": "UKESM",
@@ -27,18 +27,10 @@
       "iau_nontrop_max_p": 4.000e+4,
       "diagcloud_qn_compregimelimit": 20.0
     },
-    "iau_nontrop_max_p": [
-      3.7e+4,
-      4.2e+4
-    ],
-    "diagcloud_qn_compregimelimit": [
-      17.0,
-      22.0
-    ]
     "initParams": {
       "comment":"Intial values for parameters to be optimised. Set to null to use default values. Values below very close to std - 0 min, 1 max values",
-      "iau_nontrop_max_p":3.8e+4,
-      "diagcloud_qn_compregimelimit": 18.0
+      "iau_nontrop_max_p": null,
+      "diagcloud_qn_compregimelimit": null
     },
     "initScale": true,
     "initScale_comment": "If true then startParams range from 0 to 1 where 0 means min value; 1 max value.",
@@ -60,13 +52,13 @@
   },
     "steps": {
     "comment": "Steps for perturbations -- norm around 10% of the range. If not specified 10% will be used. Values below have been somewhat tuned.",
-    "iau_nontrop_max_p": 0.02e+4,
+    "iau_nontrop_max_p": 0.4e+4,
     "diagcloud_qn_compregimelimit": 0.5
   }
   },
   "study": {
     "comment": "Parameters that specify the study. Used by framework and not by optimisation routines",
-    "referenceModelDirectory":"/work/n02/shared/mjmn02/OptClim/optclim3/base/cesm/base1",
+    "referenceModelDirectory":"/work/n02/shared/mjmn02/OptClim/optclim3/base/none/base1",
     "referenceModelDirectory_comment":"Directory where reference model configuration exists. ",
     "covariance": {
       "comment": "Covariance matrices and operations on them. If CovObsErr and CovIntVar are *both* specified then CovTotal will be computed from them",

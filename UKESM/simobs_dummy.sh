@@ -1,7 +1,7 @@
 #!/bin/bash
-echo "--"
-echo dummy  for crude initial test of UKESM-OptClim.
+echo "------------------------------------------------------"
+echo in simobs_dummy.sh for crude initial test of UKESM-OptClim workflow
 echo workign directory is now:
 pwd
+ls *.json
 
-# creat obsrvations.json to be already there

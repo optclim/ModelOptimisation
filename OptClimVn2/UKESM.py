@@ -89,6 +89,9 @@ class UKESM(ModelSimulation.ModelSimulation):
          #M   self.modifyScript()  # modify Script
           #M  self.createWorkDir(refDirPath)  # create the work dirctory (and fill it in)
 #            self.genContSUBMIT()  # generate the continuation script.
+
+            #M not sure this next is wanted still... whats happening...
+
             self.createPostProcessFile("# No job to release")
             # this means that the model can run without post-processing
             # as this bit of code also allows the model to resubmit from an NRUN
@@ -143,6 +146,72 @@ class UKESM(ModelSimulation.ModelSimulation):
         :return:
         """
         return 
+    def submit(self, runStatus=None):
+        """
+        Provides full path to submit script except for UKESM where 
+        submission is decoupled and from PUMA
+        """
+        return None
+    def createModelSimulation(self, parameters, ppExePath=None, obsNames=None, name=None,
+                              ppOutputFile=None, refDirPath=None, verbose=False):
+        """
+        Create (in filesystem) a model simulation. After creation the simulation will be read only.
+        :param parameters -- dict of parameter names and values OR pandas series.
+        :param ppExePath --  path to post processing executable -- Default None
+        :param obsNames -- list of observations being used. -- Default None
+        :param  name ((optional)) -- name of the model simulation. If not provided will be taken from dirPath
+        :param  ppOutputFile (optional)  -- name of output file where output from postprcessing is (default comes from config)
+        :param refDirPath (optional) -- reference directory. Copy all files from here into dirPath
+        :param  verbose (optional) -- if true be verbose. Default is False
+        """
+        # general setup
+        self._readOnly = False  # can write if wanted.
+
+        if refDirPath is not None:
+            refDirPath = os.path.expandvars(os.path.expanduser(refDirPath))
+        #  fill out configuration information.
+        config = collections.OrderedDict()
+        if name is None:
+            config['name'] = os.path.basename(self.dirPath)
+        else:
+            config['name'] = name
+#        import pdb;pdb.set_trace()
+
+        obs = collections.OrderedDict()
+        try:
+            for k in obsNames: obs[k] = None
+        except TypeError:
+            pass
+
+        config['ppExePath'] = ppExePath
+        config['ppOutputFile'] = ppOutputFile
+        if refDirPath is not None: config['refDirPath'] = refDirPath
+
+        config['observations'] = obs
+        config['parameters'] = parameters
+        config['newSubmit'] = True  # default is that run starts normally.
+        config['history'] = dict()  # where we store history information. Stores info on resubmit, continue information.
+
+        if verbose:   print("Config is ", config)
+
+        if os.path.exists(self.dirPath):  # delete the directory (if it currently exists)
+            shutil.rmtree(self.dirPath, onerror=optClimLib.errorRemoveReadonly)
+        ukesmDirPath=os.path.expandvars(
+                            os.path.expanduser("$OPTCLIMTOP/UKESM"))
+        os.mkdir(self.dirPath)
+        # Future when PUMA is in Archer admin domain:
+        # we would  ssh to clone the base model suite passing
+        # base suite, script dir, run name.
+        # At present:
+        # after creating the zd001 etc rundir, currently below we
+        # write parameters for a loose coupled utility to sedn them
+        # that write is in write..params.
+
+        self.set(config)  # set (and write) configuration
+        # TODO add setParams call here..
+        # and no longer able to write to it.
+        self._readOnly = True
+
 
     def writeNameList(self, verbose=False, fail=False, **params):
         # TODO make parameters a simple dict rather than kwargs
@@ -197,6 +266,7 @@ class UKESM(ModelSimulation.ModelSimulation):
         json.dump(files, flooseRun,indent=4)
         flooseRun.close()
 
+
                # having written the params to be picked up by the 
                # polling task invoked from PUMA (until we can rework this!
                # when we can ssh from Arcvher onto Puma...
@@ -210,31 +280,35 @@ class UKESM(ModelSimulation.ModelSimulation):
           # no content is needed in the file.        
 
         flagFile=os.path.join(self.dirPath, "state")
-        fflag=open(flagfile,mode='a')
+        fflag=open(flagFile,mode='a')
         fflag.write("NEW")
         fflag.close() 
+        print("written runParams and flag file into %s",self.dirPath)
 
                # NEXT BIT IS A HACK FOR TESTING
         #for each param append tst
         TESTING_UKESM=True
-
+        ftestlooseDict={}
         if TESTING_UKESM:
             testlooseDict={}
-            for file in files.keys():  # iterate over files
-                for (value, conv) in files[file]:
+            for ifile in files.keys():  # iterate over files
+                for (value, conv) in files[ifile]:
                     if type(value) is np.ndarray:  # convert numpy array to list for writing.
                         value = value.tolist()
                     elif isinstance(value, str):  # may not be needed at python 3
                         value = str(value)  # f90nml can't cope with unicode so convert it to string.
                     if verbose:
-                        print("Setting %s,%s to %s in %s" % (conv.namelist, conv.var, value, filePath))
+                        print("Setting %s,%s to %s in %s" % (conv.namelist, conv.var, value, ifile))
                     testlooseDict[conv.var+"_tst"]=value
            # wite json file into the simulation directory
 
             lcPath=os.path.join(self.dirPath, "observations.json")
             ftestloose=open(lcPath,mode='w')
-            json.dump(ftestlooseDict, ftestloose,indent=4)
+            json.dump(testlooseDict, ftestloose,indent=4)
             ftestloose.close()
+               # END HACK FOR TESTING (similar code is in CESM )
+               # would be nice to get the flag for this into the config json
+               # and passed thru
 
         return params_used
 
@@ -257,7 +331,7 @@ class UKESM(ModelSimulation.ModelSimulation):
             # that is moderately tricky and not yet needed. So raise anNotImplementedError if tried.
             raise NotImplementedError("Not yet implemented addParam")
 
-        super(MITgcm, self).setParams(params, addParam=addParam, write=write,
+        super(UKESM, self).setParams(params, addParam=addParam, write=write,
                                       verbose=verbose)  # use super classs setParams
         # remove ensembleMember from the params -- we have no
         #  namelist for it. writeNameList complains if parameter provided
@@ -288,7 +362,7 @@ class UKESM(ModelSimulation.ModelSimulation):
             self.dirPath) / self.postProcessFile  # needs to be same as used in SCRIPT which actually calls it
         with open(outFile, 'w') as fp:
             print(
-                    f"""#  script to be run in from tail end of the MITgcm slurm script.
+                    f"""#  script to be run in from tail end of the UKESM slurm script.
 # it releases the post-processing script when the whole simulation has finished.
          {postProcessCmd} ## code inserted
                 """, file=fp)

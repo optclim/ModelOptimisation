@@ -199,7 +199,7 @@ class CESM(ModelSimulation.ModelSimulation):
         if refDirPath is not None:  # copy all files and directories from refDir
 
             # use CESD/CIME to clone 
-            # command line for now - maybe use CIME python classes later...?
+            # 
             clonecmd=os.path.expandvars('$OPTCLIMTOP/CESM/optclim_clone_cesm.sh')
             clonecmd+=" %s %s " %(refDirPath, self.dirPath)
             if verbose: print("clonecmd is ", clonecmd)
