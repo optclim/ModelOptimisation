@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from pathlib import Path
 import argparse
 
@@ -15,6 +17,21 @@ STATES = [
     'COMPLETED']
 
 
+def update_state(run, state="NEW", change_state=False):
+    next_state = STATES.index(state) + 1
+    if next_state < len(STATES):
+        next_state = STATES[next_state]
+    else:
+        next_state = None
+
+    statefile = run / 'state'
+    if statefile.exists():
+        if statefile.read_text().strip() == state:
+            if change_state and next_state is not None:
+                statefile.write_text(next_state)
+            return run.name
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('study', type=Path,
@@ -24,6 +41,8 @@ def main():
                         help="look for run in particular state, default NEW")
     parser.add_argument('-c', '--change-state', action='store_true',
                         default=False, help="advance state")
+    parser.add_argument('-r', '--run',
+                        help="modify the state of a particular run")
     args = parser.parse_args()
 
     if not args.study.is_dir():
@@ -37,15 +56,19 @@ def main():
 
     runs = []
 
-    for r in args.study.iterdir():
-        statefile = r / 'state'
-        if statefile.exists():
-            if statefile.read_text().strip() == args.state:
-                runs.append(r.name)
-                if args.change_state and next_state is not None:
-                    statefile.write_text(next_state)
-    if len(runs) > 0:
-        print(' '.join(runs))
+    if args.run is not None:
+        r = update_state(args.study/args.run,
+                         state=args.state, change_state=args.change_state)
+        if r is not None:
+            print(r)
+    else:
+        for r in args.study.iterdir():
+            r = update_state(r, state=args.state,
+                             change_state=args.change_state)
+            if r is not None:
+                runs.append(r)
+        if len(runs) > 0:
+            print(' '.join(runs))
 
 
 if __name__ == '__main__':
