@@ -1,8 +1,13 @@
 [meta]
    title = "OptClim Run Launcher"
+[cylc]
+    UTC mode = True
 [scheduling]
+    initial cycle point = 20220128T1419
+    final cycle point = 20220128T1424
     [[dependencies]]
-        graph = "getruns => launchruns"
+        [[[PT1M]]]
+           graph = "@wall_clock => getruns => launchruns"
 [runtime]
     [[getruns]]
        script = """
