@@ -99,10 +99,11 @@ class UKESM(ModelSimulation.ModelSimulation):
         ## Set up namelist mappings. 
         
         #TODO add documentation to parameters and have way of model instance reporting on known params.
-        # these are examples for initial tests and not likely used in test model
+        # #M these are examples for initial tests 
+        # note the conf file is not a ftn namelistoo
 
-        self.simpleNamelist('iau_nontrop_max_p','iau_nl','atmos/ATMOSCNTL')
-        self.simpleNamelist('diagcloud_qn_compregimelimit','iau_nl','atmos/ATMOSCNTL')
+        self.simpleNamelist('iau_nontrop_max_p','iau_nl','app/um/rose-app.conf')
+        self.simpleNamelist('diagcloud_qn_compregimelimit','iau_nl','app/um/rose-app.conf')
 
         # got some parameters and either creating or updating -- update namelist.
         if len(parameters) > 0 and (create or update):
@@ -271,16 +272,12 @@ class UKESM(ModelSimulation.ModelSimulation):
                # polling task invoked from PUMA (until we can rework this!
                # when we can ssh from Arcvher onto Puma...
 
-          # create a flag file called Q - to mark the run as being queued 
-
-          # check no file called R exists - if this case is somehow rerun
-          # it might... but not a case thats expected.
+          # create a status file
 
           # the polling task that ocmmunicates to PUMA looks for these files
-          # no content is needed in the file.        
 
         flagFile=os.path.join(self.dirPath, "state")
-        fflag=open(flagFile,mode='a')
+        fflag=open(flagFile,mode='w')
         fflag.write("NEW")
         fflag.close() 
         print("written runParams and flag file into %s",self.dirPath)
