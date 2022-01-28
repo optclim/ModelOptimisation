@@ -1,0 +1,13 @@
+[meta]
+   title = "OptClim Run Launcher"
+[scheduling]
+    [[dependencies]]
+        graph = "getruns => launchruns"
+[runtime]
+    [[getruns]]
+       script = """
+RUNS=$(getOptClimRun.py /scratch/mhagdorn/optclim/Test)
+cylc broadcast $CYLC_SUITE_NAME -s "[environment]RUNS=${RUNS}"
+"""
+    [[launchruns]]
+       script = "launchRuns.py ${RUNS}"
