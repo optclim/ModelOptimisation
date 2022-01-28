@@ -5,7 +5,7 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('run', nargs='+', help="runs to launch")
+    parser.add_argument('run', nargs='*', help="runs to launch")
     args = parser.parse_args()
 
     for r in args.run:
