@@ -66,9 +66,9 @@ export ROSE_VERSION={{ROSE_VERSION}}
                  echo simple in suite.rc
                  A2R=$({{OPTROSE}} {{OPTCLIM_STUDY}})
                  echo A2R: $A2R
-                 echo cylc broadcast $CYLC_SUITE_NAME -n echoruns -s "[environment]FRUNS=${A2R}"
-                 echo kills suite cylc broadcast $CYLC_SUITE_NAME -s "[environment]FRUNS=${A2R}"
-                 cylc broadcast $CYLC_SUITE_NAME -s "[environment]FRUNS=albert"
+                 echo cylc broadcast $CYLC_SUITE_NAME -s "[environment]RUNS=${A2R}"
+                 cylc broadcast $CYLC_SUITE_NAME -s "[environment]RUNS=${A2R}"
+                 cylc broadcast $CYLC_SUITE_NAME -d
                  echo done broadcast 
         """
         [[[job]]]
@@ -79,13 +79,13 @@ export ROSE_VERSION={{ROSE_VERSION}}
             PREBUILD =
             ROSE_TASK_N_JOBS = 1
             ROSE_TASK_OPTIONS = --ignore-lock
-            ERUNS=erunsdefault
 
     [[echoruns]]
         script = """
                  hostname
                  echo echoruns 
-                 echo bin/launchRuns.sh {{OPT_BASE_SUITE}} {{OPTCLIM_STUDY}} ${FRUNS}
+                 echo bin/launchRuns.sh {{OPT_BASE_SUITE}} {{OPTCLIM_STUDY}} ${RUNS}
+                 echo RUNS reset to ${RUNS}
         """
         [[[job]]]
             execution time limit = PT20M
@@ -95,4 +95,3 @@ export ROSE_VERSION={{ROSE_VERSION}}
             PREBUILD =
             ROSE_TASK_N_JOBS = 1
             ROSE_TASK_OPTIONS = --ignore-lock
-            ERUNS=erunsdefault
