@@ -255,22 +255,33 @@ class UKESM(ModelSimulation.ModelSimulation):
                        raise KeyError("Failed to find %s in metaFn or convNameList " % param)
             else:
                 pass
-             # Loose copupling to a task that can edit actual namelists
-             # Now save "files" for later.... in the case of Rose
-             # we do not yet have the cloned model namelists
-             # should be written to the rundir (e.g. zd001)
+             #UKESM gets the model files via PUMATEST. This requires
+             # Loose coupling to a task that can edit he suite's files.
+             # so build a simple dictionary that links paramters names and 
+             # includes any expansion of metapaaramters from a few lines above.
+
+       testlooseDict={}
+       for ifile in files.keys():  # iterate over files
+                for (value, conv) in files[ifile]:
+                    if type(value) is np.ndarray:  # convert numpy array to list for writing.
+                        value = value.tolist()
+                    elif isinstance(value, str):  # may not be needed at python 3
+                        value = str(value)  # f90nml can't cope with unicode so convert it to string.
+                    if verbose:
+                        print("Setting %s,%s to %s in %s" % (conv.namelist, conv.var, value, ifile))
+                    testlooseDict[conv.var]=value
+           # wite json file into the simulation directory
             
         runparfile="runParams.json"
-               # wite json file into the simulation directory
         runparFPath=os.path.join(self.dirPath, runparfile)
         flooseRun=open(runparFPath,mode='w')
-        json.dump(files, flooseRun,indent=4)
+        json.dump(testlooseDict, flooseRun,indent=4)
         flooseRun.close()
 
 
                # having written the params to be picked up by the 
                # polling task invoked from PUMA (until we can rework this!
-               # when we can ssh from Arcvher onto Puma...
+               # when we can ssh from Arcvher onto Puma...)
 
           # create a status file
 
@@ -287,17 +298,6 @@ class UKESM(ModelSimulation.ModelSimulation):
         TESTING_UKESM=True
         ftestlooseDict={}
         if TESTING_UKESM:
-            testlooseDict={}
-            for ifile in files.keys():  # iterate over files
-                for (value, conv) in files[ifile]:
-                    if type(value) is np.ndarray:  # convert numpy array to list for writing.
-                        value = value.tolist()
-                    elif isinstance(value, str):  # may not be needed at python 3
-                        value = str(value)  # f90nml can't cope with unicode so convert it to string.
-                    if verbose:
-                        print("Setting %s,%s to %s in %s" % (conv.namelist, conv.var, value, ifile))
-                    testlooseDict[conv.var+"_tst"]=value
-           # wite json file into the simulation directory
 
             lcPath=os.path.join(self.dirPath, "observations.json")
             ftestloose=open(lcPath,mode='w')
