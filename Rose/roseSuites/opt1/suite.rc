@@ -1,0 +1,97 @@
+#!jinja2
+[cylc]
+    UTC mode = True 
+    # Timeout handlers
+    [[events]]
+        timeout = P1D
+
+[scheduling]
+    [[dependencies]]
+        graph = "simple => echoruns "
+        
+[runtime]
+# Root, inherited by everything
+    [[root]]
+        init-script = """
+export CYLC_VERSION={{CYLC_VERSION}}
+export ROSE_VERSION={{ROSE_VERSION}}
+"""
+        script = "rose task-run --verbose"
+        [[[events]]]
+            # Cylc has sensible defaults for event notification- only add
+            # to the entry below if you want to be notified by mail
+            mail events = submission failed, submission timeout, submission retry, retry, failed, timeout
+            submission timeout = P1D # 1 day
+        [[[environment]]]
+            CUMFDIR=$CYLC_TASK_WORK_PATH
+            DATAW=$CYLC_TASK_WORK_PATH
+            DATAM=$CYLC_TASK_WORK_PATH
+            ROSE_ORIG_HOST={{ ROSE_ORIG_HOST }}
+            VN = {{ VN }}
+            RUNS = unset
+     [[HPC_ALL]] 
+        [[[directives]]]
+            --export = none
+            --chdir = /work/n02/n02/{{ HPC_USER }}
+            --account = {{ HPC_ACCOUNT }}
+        [[[job]]]
+            batch system = slurm
+        [[[remote]]]
+            host = {{ HPC_HOST }}
+            owner = {{ HPC_USER }}
+
+     [[HPC_SERIAL]]
+        inherit = None, HPC_ALL
+        [[[environment]]]
+            ROSE_TASK_N_JOBS = 1
+        [[[job]]]
+            execution time limit = PT20M
+        [[[directives]]]
+            --partition=serial
+            --qos=serial
+            --ntasks=1
+            --nodes = 1
+            --cpus-per-task = 1
+            --mem=4G
+
+    [[LINUX]]
+        [[[remote]]]
+            host = {{ ROSE_ORIG_HOST }}
+        [[[job]]]
+            batch system = background
+
+    [[simple]]
+        inherit = HPC_SERIAL
+        script = """
+                 echo simple in suite.rc
+                 A2R=$({{OPTROSE}} {{OPTCLIM_STUDY}})
+                 echo A2R: $A2R
+                 echo cylc broadcast $CYLC_SUITE_NAME -s "[environment]RUNS=${A2R}"
+                 cylc broadcast $CYLC_SUITE_NAME -s "[environment]RUNS=${A2R}"
+                 cylc broadcast $CYLC_SUITE_NAME -d
+                 echo done broadcast 
+        """
+        [[[job]]]
+            execution time limit = PT20M
+
+        [[[environment]]]
+            ROSE_TASK_APP    = simple
+            PREBUILD =
+            ROSE_TASK_N_JOBS = 1
+            ROSE_TASK_OPTIONS = --ignore-lock
+
+    [[echoruns]]
+        script = """
+                 hostname
+                 echo echoruns 
+                 echo bin/launchRuns.sh {{OPT_BASE_SUITE}} {{OPTCLIM_STUDY}} ${RUNS}
+                 echo RUNS reset to ${RUNS}
+        """
+        [[[job]]]
+            execution time limit = PT20M
+
+        [[[environment]]]
+            ROSE_TASK_APP    = echoruns
+            PREBUILD =
+            ROSE_TASK_N_JOBS = 1
+            ROSE_TASK_OPTIONS = --ignore-lock
