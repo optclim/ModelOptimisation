@@ -23,11 +23,7 @@ export ROSE_VERSION={{ROSE_VERSION}}
             mail events = submission failed, submission timeout, submission retry, retry, failed, timeout
             submission timeout = P1D # 1 day
         [[[environment]]]
-            CUMFDIR=$CYLC_TASK_WORK_PATH
-            DATAW=$CYLC_TASK_WORK_PATH
-            DATAM=$CYLC_TASK_WORK_PATH
             ROSE_ORIG_HOST={{ ROSE_ORIG_HOST }}
-            VN = {{ VN }}
             RUNS = unset
      [[HPC_ALL]] 
         [[[directives]]]
@@ -66,9 +62,11 @@ export ROSE_VERSION={{ROSE_VERSION}}
                  echo simple in suite.rc
                  A2R=$({{OPTROSE}} {{OPTCLIM_STUDY}})
                  echo A2R: $A2R
-                 echo cylc broadcast $CYLC_SUITE_NAME -s "[environment]RUNS=${A2R}"
-                 cylc broadcast $CYLC_SUITE_NAME -s "[environment]RUNS=${A2R}"
-                 cylc broadcast $CYLC_SUITE_NAME -d
+                 echo this crashes: cylc broadcast $CYLC_SUITE_NAME -n root -s "[environment]RUNS=${A2R}"
+                 echo cylc broadcast $CYLC_SUITE_NAME -n root -s "[environment]RUNS=${A2R}"
+                 echo try: sacct -u $USER
+                 sleep 20
+                 echo cylc broadcast $CYLC_SUITE_NAME -d
                  echo done broadcast 
         """
         [[[job]]]
