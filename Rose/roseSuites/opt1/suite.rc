@@ -60,7 +60,7 @@ export ROSE_VERSION={{ROSE_VERSION}}
         inherit = HPC_SERIAL
         script = """
                  echo simple in suite.rc
-                 A2R=$({{OPTROSE}} {{OPTCLIM_STUDY}})
+                 A2R=$({{OPT_GETRUNS}} {{OPTCLIM_STUDY_DIR}})
                  echo A2R: $A2R
                  echo this crashes: cylc broadcast $CYLC_SUITE_NAME -n root -s "[environment]RUNS=${A2R}"
                  echo cylc broadcast $CYLC_SUITE_NAME -n root -s "[environment]RUNS=${A2R}"
@@ -81,8 +81,8 @@ export ROSE_VERSION={{ROSE_VERSION}}
     [[echoruns]]
         script = """
                  hostname
-                 echo echoruns 
-                 echo bin/launchRuns.sh {{OPT_BASE_SUITE}} {{OPTCLIM_STUDY}} ${RUNS}
+                 echo echoruns broadcast not yet ok
+                 echo {{OPT_PUMA_BIN}}/launchRuns.sh {{OPT_BASE_SUITE}} {{OPTCLIM_STUDY_DIR}} ${RUNS}
                  echo RUNS reset to ${RUNS}
         """
         [[[job]]]
