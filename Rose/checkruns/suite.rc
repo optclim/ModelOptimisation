@@ -3,16 +3,17 @@
 [cylc]
     UTC mode = True
 [scheduling]
-    initial cycle point = 20220128T1419
-    final cycle point = 20220128T1424
+    initial cycle point = now
+    final cycle point = now+PT30M
     [[dependencies]]
         [[[PT1M]]]
            graph = "@wall_clock => getruns => launchruns"
 [runtime]
     [[getruns]]
        script = """
-RUNS=$(getOptClimRun.py /scratch/mhagdorn/optclim/Test)
-cylc broadcast $CYLC_SUITE_NAME -s "[environment]RUNS=${RUNS}"
+RUNS='zd001 zd002'
+# $(getOptClimRun.py /scratch/mhagdorn/optclim/Test)
+cylc broadcast $CYLC_SUITE_NAME -s "[environment]LRUNS=${RUNS}"
 """
     [[launchruns]]
-       script = "launchRuns.py ${RUNS}"
+       script = "echo launchRuns.py ${LRUNS}"

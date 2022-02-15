@@ -63,7 +63,7 @@ export ROSE_VERSION={{ROSE_VERSION}}
                  A2R=$({{OPT_GETRUNS}} {{OPTCLIM_STUDY_DIR}})
                  echo A2R: $A2R
                  echo this crashes: cylc broadcast $CYLC_SUITE_NAME -n root -s "[environment]RUNS=${A2R}"
-                 echo cylc broadcast $CYLC_SUITE_NAME -n root -s "[environment]RUNS=${A2R}"
+                 echo echoing only cylc broadcast $CYLC_SUITE_NAME -n root -s "[environment]RUNS=${A2R}"
                  echo try: sacct -u $USER
                  sleep 20
                  echo cylc broadcast $CYLC_SUITE_NAME -d

@@ -35,7 +35,7 @@ while (($#)) ; do
 
           # then add the ones we want.
      echo OPTCLIM_STUDY_DIR=${OPTCLIM_STUDY_DIR}  >> rose-suite.conf
-     echo OPTCLIM_RUNDIR=${OPTCLIM_RUNDIR}  >> rose-suite.conf
+     echo OPTCLIM_RUNDIR=${OPTCLIM_STUDYDIR}/${OPTCLIM_RUN}  >> rose-suite.conf
      echo OPTCLIM_RUN=${OPTCLIM_RUN}  >> rose-suite.conf
 
      echo in new suite $new_suite made following differences:
