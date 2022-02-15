@@ -36,7 +36,7 @@ def do_create(args):
    adict['optclim_rose_type'] = 'suiteRequest'
    adict['study'] = args.study
    adict['studydir'] = args.Dirstudy
-   adict['run'] = args.run
+   adict['runname'] = args.run
    adict['basesuite'] = args.basesuite
    adict['optclim_status'] = 'NEW'
    project_id = None # usually from ~/geosmeta.cfg

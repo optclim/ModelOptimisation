@@ -3,10 +3,9 @@
 # called in short term from pumatest cylc that gets requests for new OPtCLim runs.
 # will then become with new PUMA, an ssh call
 
-OPTCLIM_STUDY_DIR=$1
-shift
-BASE_SUITE=$1
-shift
+# OPTCLIM_STUDY_DIR=$1
+# shift
+# OPTCLIM_BASE_SUITE=$1
 while (($#)) ; do
 
    #...
@@ -15,7 +14,7 @@ while (($#)) ; do
 
      cd /home/$USER/roses
 
-     new_suite=${ARUN}_${BASE_SUITE}
+     new_suite=${ARUN}_${OPTCLIM_BASE_SUITE}
 
      if [[ -d $new_suite ]]
      then
@@ -25,7 +24,7 @@ while (($#)) ; do
              new_suite=${new_suite}_$$
      fi
 
-     echo  cp -r $BASE_SUITE  $NEW_SUITE
+     echo  cp -r $OPTCLIM_BASE_SUITE  $new_suite
 
      cd $new_suite
 

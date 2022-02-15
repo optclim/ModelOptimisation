@@ -8,26 +8,32 @@ import argparse
 import json
 import sys
 import os
+import subprocess
 
 def get_requests(args):
 
     projectName = args.projectName
-    study = os.environ("OPTCLIM_STUDY")
-    studyDir = os.environ("OPTCLIM_STUDY_DIR")
+    study = os.environ["OPTCLIM_STUDY"]
       
-    query = '{"gmdata.study":study,"gmdata.optclim_rose_type":"suiteRequest","gmdata.optclim_status":"NEW"}'
+    query = '"gmdata.optclim_rose_type":"suiteRequest","gmdata.optclim_status":"NEW","gmdata.study":"%s"'%study
    
     gm = GeosMETA(configFilePath=args.config_file)
  
-    resultJSON = gm.findActivities("A",projectName, query, adict)
+    resultJSON = gm.findActivities("A",projectName, query, None)
 
-    print((json.dumps(resultJSON,
-                                indent=2,
-                                sort_keys=True)))
+#    print((json.dumps(resultJSON,
+                                #indent=2,
+                                #sort_keys=True)))
 
-    print("\n no. docs: %d\n"%(len(resultJSON['_items'])))
-                for itm in resultJSON['_items']:
-                   print(itm['_id'])
+    #print("\n no. docs: %d\n"%(len(resultJSON['_items'])))
+    
+    runlist = ""
+    for itm in resultJSON['_items']:
+        #print(itm['_id'])
+        runlist +=  itm['gmdata']['runname'] + " "
+        activityEtag = itm['_etag']
+        result = gm.updateActivity(itm['_id'],activityEtag,"gmdata.optclim_status", "CLONING")
+    return runlist
 
 if __name__ == '__main__':
         # Get command line arguments
@@ -46,5 +52,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     res = get_requests(args)
-    print (res)
+    if len(res) >4:
+       cmd = "echo /home/mjm/dev/ModelOptimisation/Rose/onPUMA/launchRuns.sh "+res
+       print("running: %s\n"%cmd)
+       rtn=subprocess.check_output(cmd, shell=True)
+       print (rtn)
+    else:
+       print ("no runs to clone")
+    
 
