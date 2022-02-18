@@ -36,7 +36,6 @@ def do_create(args):
    adict['optclim_rose_type'] = 'suiteRequest'
    adict['study'] = args.study
    adict['studydir'] = args.Dirstudy
-   adict['runname'] = args.run
    adict['basesuite'] = args.basesuite
    adict['optclim_status'] = 'NEW'
    project_id = None # usually from ~/geosmeta.cfg
@@ -45,7 +44,10 @@ def do_create(args):
       project_id = args.project 
    if args.configfile:
       configFile = args.configfile 
-   return addTheDoc(project_id,configFile, adict)
+
+   for arun in args.runlist.split(' '):
+      adict['runname'] = arun
+      addTheDoc(project_id,configFile, adict)
     
 
 if __name__ == '__main__':
@@ -72,7 +74,7 @@ if __name__ == '__main__':
                         default=None,
                         help='study directory')
 
-    parser.add_argument('--run',
+    parser.add_argument('--runlist',
                         '-r',
                         required=True,
                         default=None,

@@ -43,6 +43,7 @@ if __name__ == '__main__':
                         required=False,
                         help='Name of the project (required if not in cfg file)')
     parser.add_argument('--config-file','-C',metavar='FILE',help="read configuration from FILE: default:~/.geosmeta/geosmeta.cfg")
+    parser.add_argument('--nDryrun','-n', default=False, action=argparse.BooleanOptionalAction, help="set to make no change to datasbase")
     #parser.add_argument('--study',
                         #'-s',
                         #required=True,
@@ -52,8 +53,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     res = get_requests(args)
+    cmd=""
+    if args.nDryrun:
+        cmd="echo "
     if len(res) >4:
-       cmd = "echo /home/mjm/dev/ModelOptimisation/Rose/onPUMA/launchRuns.sh "+res
+       cmd += "/home/mjm/dev/ModelOptimisation/Rose/onPUMA/launchRuns.sh "+res
        print("running: %s\n"%cmd)
        rtn=subprocess.check_output(cmd, shell=True)
        print (rtn)
