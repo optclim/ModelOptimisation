@@ -10,9 +10,9 @@
 
     [[dependencies]]
         [[[R1]]]
-             graph = startopt => sendreq
-        [[[PT1M]]]
-             graph = sendreq[-PT1M] => getreq => sendreq
+             graph = startopt => sendreq => getreq
+        [[[PT30M]]]
+             graph = sendreq[-PT30M] => getreq => sendreq 
         
 [runtime]
 # Root, inherited by everything
@@ -66,7 +66,7 @@ export ROSE_VERSION={{ROSE_VERSION}}
                  . {{OPT_SETUP_A2}}
                  sed  "s/XSTUDYNAMEX/{{OPTCLIM_STUDY}}/" {{OPT_JSON_TEMPLATE}} > {{OPT_STUDY_PARENT}}/start_{{OPTCLIM_STUDY}}.json
                  cd {{OPT_STUDY_PARENT}}
-                 runAlgorithm.py start_{{OPTCLIM_STUDY}}.json
+                 echo ECHO ONLY runAlgorithm.py start_{{OPTCLIM_STUDY}}.json
         """
         [[[job]]]
             execution time limit = PT20M
@@ -79,14 +79,15 @@ export ROSE_VERSION={{ROSE_VERSION}}
     [[sendreq]]
         inherit = HPC_SERIAL
         script = """
+                 hostname
                  . {{OPT_SETUP_A2}}
                  . {{GEOSM_SETUP_A2}}
                          # scan run directories to find runs needing a cloned base suite
                  A2R=$({{OPT_GET_RUNS}} {{OPT_STUDY_DIR}})
                  echo A2R: $A2R
                         # write to geosmeta to send request to PUMAtest
-                 echo {{OPT_SEND_RUNS}} -b {{OPT_BASE_SUITE}} -D {{OPT_STUDY_DIR}} -s {{OPTCLIM_STUDY}} -r "$A2R"
-                 {{OPT_SEND_RUNS}} -b {{OPT_BASE_SUITE}} -D {{OPT_STUDY_DIR}} -s {{OPTCLIM_STUDY}} -r "$A2R"
+                 echo {{OPT_SEND_RUNS}} -b {{OPT_BASE_SUITE}} -D {{OPT_STUDY_DIR}} -s {{OPTCLIM_STUDY}} -r \"$A2R\"
+                 {{OPT_SEND_RUNS}} -b {{OPT_BASE_SUITE}} -D {{OPT_STUDY_DIR}} -s {{OPTCLIM_STUDY}} -r \"$A2R\"
         """
         [[[job]]]
             execution time limit = PT20M
