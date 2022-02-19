@@ -1,0 +1,113 @@
+#!jinja2
+[cylc]
+    UTC mode = True 
+    # Timeout handlers
+    [[events]]
+        timeout = P1D
+
+[scheduling]
+    initial cycle point = now
+
+    [[dependencies]]
+        [[[R1]]]
+             graph = startopt => sendreq
+        [[[PT1M]]]
+             graph = sendreq[-PT1M] => getreq => sendreq
+        
+[runtime]
+# Root, inherited by everything
+    [[root]]
+        init-script = """
+export CYLC_VERSION={{CYLC_VERSION}}
+export ROSE_VERSION={{ROSE_VERSION}}
+"""
+        script = "rose task-run --verbose"
+        [[[events]]]
+            # Cylc has sensible defaults for event notification- only add
+            # to the entry below if you want to be notified by mail
+            mail events = submission failed, submission timeout, submission retry, retry, failed, timeout
+            submission timeout = P1D # 1 day
+        [[[environment]]]
+            ROSE_ORIG_HOST={{ ROSE_ORIG_HOST }}
+            RUNS = unset
+     [[HPC_ALL]] 
+        [[[directives]]]
+            --export = none
+            --account = {{ HPC_ACCOUNT }}
+        [[[job]]]
+            batch system = slurm
+        [[[remote]]]
+            host = {{ HPC_HOST }}
+            owner = {{ HPC_USER }}
+
+     [[HPC_SERIAL]]
+        inherit = None, HPC_ALL
+        [[[environment]]]
+            ROSE_TASK_N_JOBS = 1
+        [[[job]]]
+            execution time limit = PT20M
+        [[[directives]]]
+            --partition=serial
+            --qos=serial
+            --ntasks=1
+            --nodes = 1
+            --cpus-per-task = 1
+            --mem=4G
+
+    [[LINUX]]
+        [[[remote]]]
+            host = {{ ROSE_ORIG_HOST }}
+        [[[job]]]
+            batch system = background
+
+    [[startopt]]
+        inherit = HPC_SERIAL
+        script = """
+                 . {{OPT_SETUP_A2}}
+                 sed  "s/XSTUDYNAMEX/{{OPTCLIM_STUDY}}/" {{OPT_JSON_TEMPLATE}} > {{OPT_STUDY_PARENT}}/start_{{OPTCLIM_STUDY}}.json
+                 cd {{OPT_STUDY_PARENT}}
+                 runAlgorithm.py start_{{OPTCLIM_STUDY}}.json
+        """
+        [[[job]]]
+            execution time limit = PT20M
+
+        [[[environment]]]
+            ROSE_TASK_APP    = startopt
+            PREBUILD =
+            ROSE_TASK_N_JOBS = 1
+            ROSE_TASK_OPTIONS = --ignore-lock
+    [[sendreq]]
+        inherit = HPC_SERIAL
+        script = """
+                 . {{OPT_SETUP_A2}}
+                 . {{GEOSM_SETUP_A2}}
+                         # scan run directories to find runs needing a cloned base suite
+                 A2R=$({{OPT_GET_RUNS}} {{OPT_STUDY_DIR}})
+                 echo A2R: $A2R
+                        # write to geosmeta to send request to PUMAtest
+                 echo {{OPT_SEND_RUNS}} -b {{OPT_BASE_SUITE}} -D {{OPT_STUDY_DIR}} -s {{OPTCLIM_STUDY}} -r "$A2R"
+                 {{OPT_SEND_RUNS}} -b {{OPT_BASE_SUITE}} -D {{OPT_STUDY_DIR}} -s {{OPTCLIM_STUDY}} -r "$A2R"
+        """
+        [[[job]]]
+            execution time limit = PT20M
+
+        [[[environment]]]
+            ROSE_TASK_APP    = sendreq
+            PREBUILD =
+            ROSE_TASK_N_JOBS = 1
+            ROSE_TASK_OPTIONS = --ignore-lock
+
+    [[getreq]]
+        inherit = LINUX
+        script = """
+                 . {{GEOSM_SETUP_PUMA}}
+                 {{OPT_PUMA_RECV_AND_CLONE}} -s {{OPTCLIM_STUDY}} 
+        """
+        [[[job]]]
+            execution time limit = PT20M
+
+        [[[environment]]]
+            ROSE_TASK_APP    = getreq
+            PREBUILD =
+            ROSE_TASK_N_JOBS = 1
+            ROSE_TASK_OPTIONS = --ignore-lock
