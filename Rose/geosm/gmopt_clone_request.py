@@ -44,8 +44,9 @@ def do_create(args):
       project_id = args.project 
    if args.configfile:
       configFile = args.configfile 
-
+   print("about to write for %s"%args.runlist)
    for arun in args.runlist.split(' '):
+      print("writing for %s"%arun)
       adict['runname'] = arun
       addTheDoc(project_id,configFile, adict)
     
