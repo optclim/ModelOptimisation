@@ -10,7 +10,7 @@
 
     [[dependencies]]
         [[[R1]]]
-             graph = startopt => sendreq => getreq
+             graph = startopt
         [[[PT30M]]]
              graph = sendreq[-PT30M] => getreq => sendreq 
         
@@ -66,7 +66,24 @@ export ROSE_VERSION={{ROSE_VERSION}}
                  . {{OPT_SETUP_A2}}
                  sed  "s/XSTUDYNAMEX/{{OPTCLIM_STUDY}}/" {{OPT_JSON_TEMPLATE}} > {{OPT_STUDY_PARENT}}/start_{{OPTCLIM_STUDY}}.json
                  cd {{OPT_STUDY_PARENT}}
-                 echo ECHO ONLY runAlgorithm.py start_{{OPTCLIM_STUDY}}.json
+                 echo runAlgorithm.py start_{{OPTCLIM_STUDY}}.json
+                 runAlgorithm.py start_{{OPTCLIM_STUDY}}.json
+                 . {{GEOSM_SETUP_A2}}
+                         # scan run directories to find runs needing a cloned base suite
+                 A2R=$({{OPT_GET_RUNS}} {{OPT_STUDY_DIR}})
+                 echo A2R: $A2R
+                        # write to geosmeta to send request to PUMAtest
+                 if [[ x${A2R} != x ]] 
+                 then
+                   for ia in ${A2R}
+                   do
+                      echo {{OPT_SEND_RUNS}} -b {{OPT_BASE_SUITE}} -D {{OPT_STUDY_DIR}} -s {{OPTCLIM_STUDY}} -r ${ia}
+                      {{OPT_SEND_RUNS}} -b {{OPT_BASE_SUITE}} -D {{OPT_STUDY_DIR}} -s {{OPTCLIM_STUDY}} -r ${ia} -C {{OPT_STUDY_PARENT}}/geosmeta.cfg
+                      echo "SENT">{{OPT_STUDY_DIR}}/${ia}/state
+                   done
+                 else
+                      echo null in A2R
+                 fi
         """
         [[[job]]]
             execution time limit = PT20M
@@ -83,11 +100,25 @@ export ROSE_VERSION={{ROSE_VERSION}}
                  . {{OPT_SETUP_A2}}
                  . {{GEOSM_SETUP_A2}}
                          # scan run directories to find runs needing a cloned base suite
-                 A2R=$({{OPT_GET_RUNS}} {{OPT_STUDY_DIR}})
-                 echo A2R: $A2R
-                        # write to geosmeta to send request to PUMAtest
-                 echo {{OPT_SEND_RUNS}} -b {{OPT_BASE_SUITE}} -D {{OPT_STUDY_DIR}} -s {{OPTCLIM_STUDY}} -r \"$A2R\"
-                 {{OPT_SEND_RUNS}} -b {{OPT_BASE_SUITE}} -D {{OPT_STUDY_DIR}} -s {{OPTCLIM_STUDY}} -r \"$A2R\"
+                 if [[ -d {{OPT_STUDY_DIR}} ]]
+                 then
+                     A2R=$({{OPT_GET_RUNS}} {{OPT_STUDY_DIR}})
+                     echo A2R: $A2R
+                     if [[ x${A2R} != x ]] 
+                     then
+                           for ia in ${A2R}
+                           do
+                              echo {{OPT_SEND_RUNS}} -b {{OPT_BASE_SUITE}} -D {{OPT_STUDY_DIR}} -s {{OPTCLIM_STUDY}} -r ${ia}
+                              {{OPT_SEND_RUNS}} -b {{OPT_BASE_SUITE}} -D {{OPT_STUDY_DIR}} -s {{OPTCLIM_STUDY}} -r ${ia} -C {{OPT_STUDY_PARENT}}/geosmeta.cfg
+                              echo "SENT">{{OPT_STUDY_DIR}}/${ia}/state
+                           done
+                     else
+                      echo null in A2R
+                     fi
+                 else
+                     echo no study dir yet  {{OPTCLIM_STUDY}}
+                 fi # may be called before stdydir ecsts,.
+
         """
         [[[job]]]
             execution time limit = PT20M
@@ -102,7 +133,7 @@ export ROSE_VERSION={{ROSE_VERSION}}
         inherit = LINUX
         script = """
                  . {{GEOSM_SETUP_PUMA}}
-                 {{OPT_PUMA_RECV_AND_CLONE}} -s {{OPTCLIM_STUDY}} 
+                 {{OPT_PUMA_RECV_AND_CLONE}} -s {{OPTCLIM_STUDY}} -C /home/mjm/geosmeta.cfg
         """
         [[[job]]]
             execution time limit = PT20M
