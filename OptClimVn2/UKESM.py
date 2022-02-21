@@ -260,8 +260,8 @@ class UKESM(ModelSimulation.ModelSimulation):
              # so build a simple dictionary that links paramters names and 
              # includes any expansion of metapaaramters from a few lines above.
 
-       testlooseDict={}
-       for ifile in files.keys():  # iterate over files
+        testlooseDict={}
+        for ifile in files.keys():  # iterate over files
                 for (value, conv) in files[ifile]:
                     if type(value) is np.ndarray:  # convert numpy array to list for writing.
                         value = value.tolist()
@@ -292,20 +292,6 @@ class UKESM(ModelSimulation.ModelSimulation):
         fflag.write("NEW")
         fflag.close() 
         print("written runParams and flag file into %s",self.dirPath)
-
-               # NEXT BIT IS A HACK FOR TESTING
-        #for each param append tst
-        TESTING_UKESM=True
-        ftestlooseDict={}
-        if TESTING_UKESM:
-
-            lcPath=os.path.join(self.dirPath, "observations.json")
-            ftestloose=open(lcPath,mode='w')
-            json.dump(testlooseDict, ftestloose,indent=4)
-            ftestloose.close()
-               # END HACK FOR TESTING (similar code is in CESM )
-               # would be nice to get the flag for this into the config json
-               # and passed thru
 
         return params_used
 
