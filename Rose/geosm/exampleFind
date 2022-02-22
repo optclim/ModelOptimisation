@@ -1,0 +1,1 @@
+gm_find_docs.py -q '"gmdata.optclim_rose_type":"suiteRequest","gmdata.optclim_status":"NEW"'
