@@ -13,7 +13,7 @@ import subprocess
 def get_requests(args):
 
     projectName = args.projectName
-    study = os.environ["OPTCLIM_STUDY"]
+    study = args.study
       
     query = '"gmdata.optclim_rose_type":"suiteRequest","gmdata.optclim_status":"NEW","gmdata.study":"%s"'%study
    
@@ -44,11 +44,11 @@ if __name__ == '__main__':
                         help='Name of the project (required if not in cfg file)')
     parser.add_argument('--config-file','-C',metavar='FILE',help="read configuration from FILE: default:~/.geosmeta/geosmeta.cfg")
     parser.add_argument('--nDryrun','-n', default=False, action=argparse.BooleanOptionalAction, help="set to make no change to datasbase")
-    #parser.add_argument('--study',
-                        #'-s',
-                        #required=True,
-                        #default=None,
-                        #help='study name')
+    parser.add_argument('--study',
+                        '-s',
+                        required=True,
+                        default=None,
+                        help='study name')
 
     args = parser.parse_args()
 
