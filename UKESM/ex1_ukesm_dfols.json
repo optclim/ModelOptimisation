@@ -29,8 +29,8 @@
     },
     "initParams": {
       "comment":"Intial values for parameters to be optimised. Set to null to use default values. Values below very close to std - 0 min, 1 max values",
-      "iau_nontrop_max_p": null,
-      "diagcloud_qn_compregimelimit": null
+      "iau_nontrop_max_p": 1,
+      "diagcloud_qn_compregimelimit": 1
     },
     "initScale": true,
     "initScale_comment": "If true then startParams range from 0 to 1 where 0 means min value; 1 max value.",
@@ -43,11 +43,11 @@
     "comment": "Defines the minimum and maximmum ranges for the parameters. Must be defined for ALL parameters used in GN optimisation,",
     "iau_nontrop_max_p": [
       3.7e+4,
-      4.2e+4
+      4.2e+5
     ],
     "diagcloud_qn_compregimelimit": [
       17.0,
-      22.0
+      28.0
     ]
   },
     "steps": {
