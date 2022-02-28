@@ -133,7 +133,7 @@ export ROSE_VERSION={{ROSE_VERSION}}
         inherit = LINUX
         script = """
                  . {{GEOSM_SETUP_PUMA}}
-                 {{OPT_PUMA_RECV_AND_CLONE}} -s {{OPTCLIM_STUDY}} -C /home/mjm/geosmeta.cfg -n
+                 {{OPT_PUMA_RECV_AND_CLONE}} -s {{OPTCLIM_STUDY}} -C /home/mjm/geosmeta.cfg
         """
         [[[job]]]
             execution time limit = PT20M
