@@ -115,7 +115,7 @@ class runSubmit(Submit.ModelSubmit):
                 pDict.update(ensembleMember=ensembleMember)
                 mc = self.model(pDict, update=True, verbose=self.verbose)
                 if mc is not None:  # got a model
-                    obs = mc.getObs(series=True)  # get obs from the modelConfig
+                    obs = mc #.getObs(series=True)  # get obs from the modelConfig
                     # force fixed order.
                     obs = obs.reindex(
                         self.obsNames())  # note using obsNames as specified. transform (if supplied) can change names.

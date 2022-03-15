@@ -9,6 +9,7 @@
     "Name_comment": "Study Name",
     "Scenario": "test1",
     "Scenario_comment": "name of the scenario used to group individual runs",
+    "database": "sqlite:////scratch/mhagdorn/optclim/modelopt.sqlite",
     "baseRunID": "dr",
     "baseRunID_comment": "base for runID. Only first two characters are generally used.",
     "runTime": 10000,

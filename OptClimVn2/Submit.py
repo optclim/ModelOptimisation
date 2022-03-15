@@ -17,7 +17,10 @@ import shutil
 import numpy as np
 import pandas as pd
 
+import ObjectiveFunction
+
 import optClimLib
+import config2db
 import sys
 
 # check we are version 3.7 or above.
@@ -125,6 +128,10 @@ class ModelSubmit(object):
         else:
             self.rootDir = pathlib.Path(rootDir)  # make sure it is a Path.
         self.rootDir.mkdir(parents=True, exist_ok=True)
+
+        self._objectiveFunction = config2db.config2db(self.config, rootDir)
+        
+        
         # potentially clean up dir.
         if restart:
             self.clean()  # that cleans up. Nothing to read either.
@@ -294,6 +301,8 @@ class ModelSubmit(object):
 
             else:
                 self._models[key] = model  # store the model in modelRuns indexed by its key.
+                if self._objectiveFunction.state(model.getParams()) == ObjectiveFunction.LookupState.NEW:
+                    self._objectiveFunction.set_result(model.getParams(), model.getObs(), force=True)
 
             return model
 
@@ -396,16 +405,17 @@ class ModelSubmit(object):
         paramAll.update(self.fixedParams())
         paramAll.update(params)
 
-        key = self.genKey(paramAll)
-        if doVerbose:
-            print("Key is\n", repr(key), '\n', '-' * 60)
-        model = self._models.get(key, None)
-        if (model is None) and update:
+        try:
+            simobs = self._objectiveFunction.get_simobs(params)
+        except ObjectiveFunction.NewRun:
+            simobs = None
+
+            key = self.genKey(paramAll)
             if doVerbose:
                 print("Failed to find", paramAll, '\n using key: ', key)
             self.modelSubmit((key, paramAll))
 
-        return model
+        return simobs
 
     def rerunModel(self, model):
         """

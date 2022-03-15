@@ -1,10 +1,10 @@
 __all__ = ['config2db']
 
-import OptClim2
+import ObjectiveFunction
 
 
 def config2db(config, rootDir):
-    """setup OptClim2 database from config object"""
+    """setup ObjectiveFunction database from config object"""
 
     study = config.Config['Name']
     if 'Scenario' not in config.Config:
@@ -19,10 +19,22 @@ def config2db(config, rootDir):
     for p in config.Config['Parameters']['minmax']:
         val = config.Config['Parameters']['minmax'][p]
         if not isinstance(val, str):
-            parameters[p] = OptClim2.ParameterFloat(val[0], val[1])
+            opt = config.Config['Parameters']['optimumParams'][p]
+            parameters[p] = ObjectiveFunction.ParameterFloat(opt, val[0], val[1])
 
-    objfun = OptClim2.ObjectiveFunctionResidual(
-        study, rootDir, parameters, scenario=scenario, db=db)
+    targets = {}
+    for t in config.Config['targets']:
+        try:
+            v = float(config.Config['targets'][t])
+        except:
+            continue
+        if t in config.Config['study']['ObsList'] \
+           or t == config.Config['study']['constraintName']:                 
+            targets[t] = v
+
+    objfun = ObjectiveFunction.ObjectiveFunctionSimObs(
+        study, rootDir, parameters, list(targets.keys()),
+        scenario=scenario, db=db, prelim=False)
 
     return objfun
 
@@ -36,6 +48,6 @@ if __name__ == '__main__':
 
     pprint(cfg.Config["Parameters"])
 
-    parameters = config2db(cfg, Path('/tmp'))
+    objfun = config2db(cfg, Path('/tmp'))
 
-    pprint(parameters)
+    pprint(objfun)
