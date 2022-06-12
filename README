@@ -1,3 +1,4 @@
+This branch includes additions to support the CESM2, UKESM and MITgcm-based models.
 
 tools/runAlgorithm.py is a python script that runs an optimisation or other algorithm-- it is controlled by a json file
 see Configurations/example.json or Configurations/example_dfols.json
