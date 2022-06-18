@@ -169,6 +169,9 @@ export ROSE_VERSION={{ROSE_VERSION}}
             cd ${OPTCLIM_RUNDIR}
             
             echo edit namelists now....
+
+            /work/n02/shared/mjmn02/sw/conda/opt_1/bin/modeloptimisation2-create ./runParams.json ./
+
         """
         [[[job]]]
             execution time limit = PT20M
