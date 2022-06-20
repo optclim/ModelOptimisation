@@ -1,0 +1,13 @@
+[jinja2:suite.rc]
+BUILD=false
+RECON=false
+RUNATM=false
+OPTCLIM_EXTRAS=true
+HPC_ACCOUNT='n02-optclim'
+HPC_HOST='login.archer2.ac.uk'
+HPC_QUEUE='short'
+HPC_USER='mjmn02'
+VN='11.8'
+OPTCLIM_RUNDIR='/a/run/dir/rose-suiteconig/fred001'
+OPTCLIM_STUDY_DIR='/a/study/dir/rose-suiteconig'
+OPTCLIM_RUN='fred001'

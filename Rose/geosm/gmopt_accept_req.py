@@ -26,14 +26,17 @@ def get_requests(args):
                                 #sort_keys=True)))
 
     #print("\n no. docs: %d\n"%(len(resultJSON['_items'])))
-    
-    runlist = ""
+
+     # to do maybe should return tuples, if we think of pumatest as a server of model clones.
+     # need a quick test for now!
+    runlist = []
     for itm in resultJSON['_items']:
         #print(itm['_id'])
-        runlist +=  itm['gmdata']['runname'] + " "
+        runlist.append((itm['gmdata']['studydir'],
+                       itm['gmdata']['basesuite'], itm['gmdata']['runname'] ))
         activityEtag = itm['_etag']
         result = gm.updateActivity(itm['_id'],activityEtag,"gmdata.optclim_status", "CLONING")
-    return runlist
+    return (runlist)
 
 if __name__ == '__main__':
         # Get command line arguments
@@ -52,16 +55,20 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    res = get_requests(args)
-    cmd=""
-    if args.nDryrun:
-        cmd="echo "
-    if len(res) >4:
-       cmd += "/home/mjm/dev/ModelOptimisation/Rose/onPUMA/launchRuns.sh "+res
-       print("running: %s\n"%cmd)
-       rtn=subprocess.check_output(cmd, shell=True)
-       print (rtn)
-    else:
+    runlist = get_requests(args)
+
+    myscript="/home/mjm/dev/ModelOptimisation/Rose/onPUMA/launchRuns.sh "
+    for (req_sd, req_bs, req_run) in runlist:
+    
+        cmd = "%s %s %s %s"%(myscript, req_sd, req_bs, req_run)
+        if args.nDryrun:
+              print ("dryrun for %s"%cmd)
+        else:
+           print("running: %s\n"%cmd)
+           rtn=subprocess.check_output(cmd, shell=True)
+           print (rtn)
+
+    if len(runlist)==0:
        print ("no runs to clone")
     
 
