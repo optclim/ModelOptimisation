@@ -1,9 +1,10 @@
 """
-test_MITgcm: test cases for MITgcm methods.
-This test routine needs OPTCLIMTOP specified sensibly. (ideally so that $OPTCLIMTOP/um45 corresponds to
-  where this routine lives..
-  Beware - some methods are in the ModelOptimsation code
-  THis module is a tailoring of test_HadCM3.py.
+test_MITgcm: test cases for MITgcm.py methods.
+  Beware - some methods are in the ModelOptimsation class
+  THis module attempts a tailoring of test_HadCM3.py  with minimal added changes.
+  in ModelOptimisation run:
+   pytest -s OptClimVn2/test_MITgcm.py 
+       if you want print output visible. Else leave out the "-s"
 """
 import collections
 import filecmp
@@ -23,6 +24,7 @@ import optClimLib
 OBS_LIST= [ "dynstat_theta_mean", "dynstat_salt_mean", "seaice_area_mean" ]
 PAR_LIST= ["gravity", "SEAICE_STRENGTH"]
 PPEXE="optclim_finished"
+REFERENCE_RUNDIR="/work/n02/shared/mjmn02/OptClim/optclim3/studies/ecco/Exampdfols_TestRunKeep"
 
 def cmp_lines(path_1, path_2, ignore=None, verbose=False):
     """
@@ -71,10 +73,11 @@ class testMITgcm(unittest.TestCase):
 
         tmpDir = tempfile.TemporaryDirectory()
         testDir = pathlib.Path(tmpDir.name)  # used throughout.
-        refDir="/work/n02/shared/mjmn02/OptClim/optclim2A/ModelOptimisation/ECCOv4"
-        #"/work/n02/shared/mjmn02/OptClim/optclim3/base/ecco/base1"
+        #refDir="/work/n02/shared/mjmn02/OptClim/optclim2A/ModelOptimisation/ECCOv4"
+        refDir="/work/n02/shared/mjmn02/OptClim/optclim3/base/ecco/base1"
         #refDir = pathlib.Path('Configurations') / 'xnmea'  # need a coupled model.
-        simObsDir = 'pytesting'
+        #simObsDir = '/work/n02/shared/mjmn02/OptClim/optclim2A/ModelOptimisation/ECCOv4/pytesting'
+        simObsDir = REFERENCE_RUNDIR
         self.dirPath = testDir
         self.refPath = refDir
         self.tmpDir = tmpDir  # really a way of keeping in context
@@ -88,6 +91,9 @@ class testMITgcm(unittest.TestCase):
                                    ppOutputFile='observations.json', runTime=1200, runCode='test',
                                    obsNames=OBS_LIST,
                                    verbose=False, parameters=parameters)
+        shutil.copy(os.path.join(simObsDir, 'zd001', 'observations.json'),
+                    os.path.join(testDir, 'observations.json'))  # copy over a netcdf file of observations.
+
 
     def tearDown(self):
         """
@@ -122,7 +128,9 @@ class testMITgcm(unittest.TestCase):
         self.assertDictEqual(self.model.get(['parameters']), expectParam)
         self.assertEqual(self.model.get(['ppOutputFile']), 'observations.json')
         self.assertListEqual(list(self.model.get(['observations']).keys()), list(expectObs.keys()))
-        # test that read works. Works means no failures and have observations..
+        # Next test that read works. Works means no failures and have observations..
+        # we copied in an observables at end of the setup.... rea dit here and see
+        # we have some differnet data but same keys
 
         m = MITgcm.MITgcm(self.dirPath, verbose=True)
         # Nothing should have changed except observations have been read in
@@ -150,9 +158,10 @@ class testMITgcm(unittest.TestCase):
         :return:
         """
         # will test that can set namelist variables, that setting something that doesn't exist fails.
+#        import pdb;pdb.set_trace() 
         self.model.setReadOnly(False)  # want to modify model.
         # param is dict of parmaetrs that map directly to namelist variables.
-        param = {"gravity": 10.0, "SEAICE_STRENGTH": 0.5}
+        param = {"gravity": 19.0, "SEAICE_STRENGTH": 1.5}
         metaParam = {}
         un = collections.OrderedDict()
         for k, v in param.items():
@@ -192,7 +201,7 @@ class testMITgcm(unittest.TestCase):
             else:
                 self.assertAlmostEqual(expect[k], vars[k], msg=msg)
 
-    def test_modifyScript(self):
+    def notest_modifyScript(self):
         """
         Test modifyScript produces expected result
         and fails if it tries to modify something already modifies
@@ -202,7 +211,7 @@ class testMITgcm(unittest.TestCase):
         print ("modify_script not used")
 
 
-    def test_modifySubmit(self):
+    def notest_modifySubmit(self):
         """
         Test modifySubmit - but what should it be doing?
         :return: 
@@ -223,7 +232,7 @@ class testMITgcm(unittest.TestCase):
     def check_script(self, print_output=False, runType='CRUN', expect=None, expectMod=None):
         print (" MITgcm script is not changed - not testing")
 
-    def test_genContSUBMIT(self):
+    def notest_genContSUBMIT(self):
         """
         test that contSUBMIT works.
         Tests are that it only had two modification marks in the continuation SUBMIT script
@@ -237,7 +246,9 @@ class testMITgcm(unittest.TestCase):
         """
         # no need to run createWorkDIr as already ran by init
         # just check it exists and is a dir
-        self.assertTrue(os.path.isdir(os.path.join(self.model.dirPath, 'W')))
+        self.assertTrue(os.path.isdir(self.model.dirPath))
+           # if comparing with HadCM£ then it creates a subdirectory W.
+           # not done with MITgcm.
 
     def test_fixClimFCG(self):
         """
@@ -281,17 +292,12 @@ class testMITgcm(unittest.TestCase):
         # need to check its contents...
         # will check two things. 1) that SUBCONT is as expected 2) that the qrls cmd is in the file
         submit_script = self.model.submit('continue')
-        cntSUBCONT = 0
         cntqrls = 0
         with open(file, 'r') as f:
             for line in f:
                 if line.find(release_cmd) != -1:
                     cntqrls += 1
-                elif line.find(f'SUBCONT={submit_script}') != -1:
-                    cntSUBCONT += 1
-
         self.assertEqual(cntqrls, 1, 'Expected only 1 qrls cmd')
-        self.assertEqual(cntSUBCONT, 1, 'expected only 1 SUBMITCMD')
 
 
 if __name__ == "__main__":

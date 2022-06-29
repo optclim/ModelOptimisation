@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to check ECCOv4-r4 runs for eCSE #
+# Script to check ECCOv4-r4 runs complete ok
 ###########################################
 filename=STDOUT.0000
 
