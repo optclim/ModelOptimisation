@@ -98,9 +98,11 @@ class UKESM(ModelSimulation.ModelSimulation):
 
         ## Set up namelist mappings. 
         
-        #TODO add documentation to parameters and have way of model instance reporting on known params.
-        # #M these are examples for initial tests 
-        # note the conf file is not a ftn namelistoo
+        # TODO NOTE: with UKESM we need to accept the parameters, but dont edit them here.
+        # should replace all this logic
+        # All we are doing is making a file runParams.json in the rundir.
+        # Gives us loose couplign of the definitions of params and their application to the model instance
+        # we now have a module that does the editing of the namelists elsewhere - on reciept of the cloned suite
 
         self.simpleNamelist('iau_nontrop_max_p','iau_nl','app/um/rose-app.conf')
         self.simpleNamelist('diagcloud_qn_compregimelimit','iau_nl','app/um/rose-app.conf')
@@ -299,7 +301,8 @@ class UKESM(ModelSimulation.ModelSimulation):
         """
         Set the parameter values and write them to the configuration file
         and modify the parameters in the current directory. Calls the superclass to do standard stuff first then
-         uses existing code to modify parameters in Demo1 namelists 
+        UKESM just writes to runParams.json
+
         :param params -- dictionary (or ordered dict or pd.Series) of the parameter values
         :param addParam (default True) -- if True add to existing parameters
         :param write (default True) -- if True update configuration file.
