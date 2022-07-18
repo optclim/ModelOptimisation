@@ -68,22 +68,7 @@ export ROSE_VERSION={{ROSE_VERSION}}
                  cd {{OPT_STUDY_PARENT}}
                  echo runAlgorithm.py start_{{OPTCLIM_STUDY}}.json
                  runAlgorithm.py start_{{OPTCLIM_STUDY}}.json
-                 . {{GEOSM_SETUP_A2}}
-                         # scan run directories to find runs needing a cloned base suite
-                 A2R=$({{OPT_GET_RUNS}} {{OPT_STUDY_DIR}})
-                 echo A2R: $A2R
-                        # write to geosmeta to send request to PUMAtest
-                 if [[ x${A2R} != x ]] 
-                 then
-                   for ia in ${A2R}
-                   do
-                      echo {{OPT_SEND_RUNS}} -b {{OPT_BASE_SUITE}} -D {{OPT_STUDY_DIR}} -s {{OPTCLIM_STUDY}} -r ${ia}
-                      {{OPT_SEND_RUNS}} -b {{OPT_BASE_SUITE}} -D {{OPT_STUDY_DIR}} -s {{OPTCLIM_STUDY}} -r ${ia} -C {{OPT_STUDY_PARENT}}/geosmeta.cfg
-                      echo "QUEUED">{{OPT_STUDY_DIR}}/${ia}/state
-                   done
-                 else
-                      echo null in A2R
-                 fi
+                 echo runAlgorithm.py closed
         """
         [[[job]]]
             execution time limit = PT20M
