@@ -1,0 +1,25 @@
+    [[dependencies]]
+        [[[ R1 ]]]
+            graph = """
+{% if CMIP6_EXP %}
+{{ 'validate_suite_info => install_ancil' + (' & fcm_make_pp' if POSTPROC else '') + (' & fcm_make_um' if BUILD_UM else '') + (' & recon' if RECON else '') + (' & fcm_make_ocean' if BUILD_OCEAN else '') }}
+{% endif %}
+{{ 'init_cfc_age_dump' + (' => coupled' if RUN else '') if INIT_CFC_AGE else '' }}
+            """
+
+        [[[ {{FMT}} ]]]
+            graph = """
+{% if RUN %}
+  {% if NEMO_ANOM %}
+coupled => nemo_anomaly {{ '=> POSTPROC_GROUP' if POSTPROC else '=> housekeeping' if HOUSEKEEP else ''}}
+  {% endif %}
+  {% if POSTPROC %}
+    {% if SPLIT_PP %}
+postproc_nemo_grid[-{{FMT}}] => postproc_nemo_grid
+postproc_nemo_diaptr[-{{FMT}}] => postproc_nemo_diaptr
+postproc_nemo_ptrc[-{{FMT}}] => postproc_nemo_ptrc
+postproc_nemo_ptrd[-{{FMT}}] => postproc_nemo_ptrd
+    {% endif %}
+  {% endif %}  
+{% endif %}
+           """

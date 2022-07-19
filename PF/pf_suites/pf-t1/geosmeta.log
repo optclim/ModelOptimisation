@@ -1,0 +1,20 @@
+2022-02-23 18:24:34,021 - tool - DEBUG - Logging configured
+2022-02-23 18:24:34,029 - tool - DEBUG - Logging configured
+2022-02-23 18:24:34,031 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.geos.ed.ac.uk:443
+2022-02-23 18:24:34,210 - urllib3.connectionpool - DEBUG - https://www.geos.ed.ac.uk:443 "GET /geosmeta/activities?where=%7B%22%24and%22%3A%5B%7B%22project%22%3A+%22P1%22%7D%2C%7B%22gmdata.optclim_rose_type%22%3A%22suiteRequest%22%2C%22gmdata.optclim_status%22%3A%22NEW%22%2C%22gmdata.study%22%3A%22or2%22%7D%5D%7D HTTP/1.1" 200 1025
+2022-02-23 18:25:12,586 - tool - DEBUG - Logging configured
+2022-02-23 18:25:12,586 - tool - DEBUG - Logging configured
+2022-02-23 18:25:12,588 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.geos.ed.ac.uk:443
+2022-02-23 18:25:12,685 - urllib3.connectionpool - DEBUG - https://www.geos.ed.ac.uk:443 "GET /geosmeta/activities?where=%7B%22%24and%22%3A%5B%7B%22project%22%3A+%22P1%22%7D%2C%7B%22gmdata.optclim_rose_type%22%3A%22suiteRequest%22%2C%22gmdata.optclim_status%22%3A%22NEW%22%2C%22gmdata.study%22%3A%22or2%22%7D%5D%7D HTTP/1.1" 200 1025
+2022-02-23 18:25:12,688 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.geos.ed.ac.uk:443
+2022-02-23 18:25:12,784 - urllib3.connectionpool - DEBUG - https://www.geos.ed.ac.uk:443 "PATCH /geosmeta/activities/621525e1ac1b8453b338f002 HTTP/1.1" 200 412
+2022-02-23 18:26:37,612 - tool - DEBUG - Logging configured
+2022-02-23 18:26:37,612 - tool - DEBUG - Logging configured
+2022-02-23 18:26:37,614 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.geos.ed.ac.uk:443
+2022-02-23 18:26:37,695 - urllib3.connectionpool - DEBUG - https://www.geos.ed.ac.uk:443 "GET /geosmeta/activities?where=%7B%22%24and%22%3A%5B%7B%22project%22%3A+%22P1%22%7D%2C%7B%22gmdata.optclim_rose_type%22%3A%22suiteRequest%22%2C%22gmdata.optclim_status%22%3A%22NEW%22%2C%22gmdata.study%22%3A%22or2%22%7D%5D%7D HTTP/1.1" 200 176
+2022-02-23 18:27:05,327 - tool - DEBUG - Logging configured
+2022-02-23 18:27:05,327 - tool - DEBUG - Logging configured
+2022-02-23 18:27:05,329 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.geos.ed.ac.uk:443
+2022-02-23 18:27:05,427 - urllib3.connectionpool - DEBUG - https://www.geos.ed.ac.uk:443 "GET /geosmeta/activities?where=%7B%22%24and%22%3A%5B%7B%22project%22%3A+%22P1%22%7D%2C%7B%22gmdata.optclim_rose_type%22%3A%22suiteRequest%22%2C%22gmdata.optclim_status%22%3A%22NEW%22%2C%22gmdata.study%22%3A%22or2%22%7D%5D%7D HTTP/1.1" 200 1025
+2022-02-23 18:27:05,429 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.geos.ed.ac.uk:443
+2022-02-23 18:27:05,527 - urllib3.connectionpool - DEBUG - https://www.geos.ed.ac.uk:443 "PATCH /geosmeta/activities/621525e1ac1b8453b338f002 HTTP/1.1" 200 412

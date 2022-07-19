@@ -1,0 +1,10 @@
+#!/bin/bash
+echo "rebuilding nemo oceaqn restart file"
+$REBUILD_NEMO_SCRIPT $NEMO_RESTART_PATH $NUM_RESTART_FILES
+echo "rebuilding iceberg restart file using rebuild_nemo"
+$REBUILD_NEMO_SCRIPT $ICEBERG_RESTART_PATH $NUM_RESTART_FILES
+echo "rebuilding iceberg restart file using icb_combrest.py"
+echo "ICB_RESTART_PATH =${ICB_RESTART_PATH}"
+echo "NUM_RESTART_FILES = ${NUM_RESTART_FILES}"
+echo "ICEBERG_REBUILT_PATH = ${ICEBERG_REBUILT_PATH}"  
+python $CYLC_SUITE_DEF_PATH/bin/icb_combrest.py -f ${ICB_RESTART_PATH} -n $NUM_RESTART_FILES -o $ICEBERG_REBUILT_PATH

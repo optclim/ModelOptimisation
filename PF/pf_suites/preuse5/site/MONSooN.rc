@@ -1,0 +1,215 @@
+{% set PPN = 32 if (CORE == 'haswell') else 36 if ( CORE == 'broadwell') %}
+{% set APPN = ATM_PPN if ATM_PPN is defined else PPN %}
+{% set OPPN = OCN_PPN if OCN_PPN is defined else PPN %}
+{% if XIOS_NPROC is defined and XIOS_NPROC > 0 %}
+ {% set XPPN = XCPU if (XCPU is defined) else PPN %}
+{% endif %}
+
+{# ********** INHERITED NAMESPACES *************** #}
+
+    [[UMBUILD]]
+        [[[environment]]]
+            CONFIG = meto-xc40-cce
+            ROSE_TASK_N_JOBS = 6
+            {% if ARCHIVE_FCM_MAKE == true %}
+            ARCHIVE_FCM_MAKE_CMD=--archive
+            {% else %}
+            ARCHIVE_FCM_MAKE_CMD=
+            {% endif %}
+            
+    [[HPC]]
+        {% if USE_MODULES == 'central' %}
+          {% set MODULE_CMD = 'module load ' + CONFIG_MODULE_NAME + ';' %}
+        {% elif USE_MODULES == 'custom' %}
+          {% set MODULE_CMD = 'module use ' + MOCI_MODULE_PATH + '; module load ' + CONFIG_MODULE_NAME + ';'  %}
+          {% elif USE_MODULES == 'none' %}
+          {% set MODULE_CMD = 'export xios_path= ' + xios_path + '; export prism_path=' + prism_path %}
+        {% endif %}
+        pre-script = "{{MODULE_CMD}} module load craype-hugepages8M; module list"
+        [[[job]]]
+            submission retry delays = 3*PT5M,3*PT30M,3*PT3H
+            batch system = pbs
+        [[[remote]]]
+            host = xcs-c
+        [[[environment]]]
+            BASIS_YR = $(rose date --print-format='%Y' {{CYCLE_INIT}})
+            PLATFORM = xc40
+            UMDIR = /projects/um1
+            UM_INSTALL_DIR = /projects/um1
+            CMIP6_ANCILS = /projects/ancils/cmip6/ancils
+            OCEANDIR = /projects/ocean
+        [[[directives]]]
+            -W umask=0022
+            {% if not USE_DEFAULT_ACCOUNT %}
+            -P = {{ ACCOUNT_USR_OTHER if ACCOUNT_USR == 'other' else ACCOUNT_USR}}
+            {% endif %}
+
+    [[HPC_SERIAL]]
+        inherit = None, HPC
+        [[[job]]]
+            execution time limit = PT10M
+        [[[environment]]]
+            ROSE_TASK_N_JOBS = 1
+        [[[directives]]]
+            -l ncpus = 1
+            -q = shared
+
+{# ************ RESOURCES ************* #}
+
+    [[EXTRACT_RESOURCE]]
+        [[[job]]]
+            batch system = background
+        [[[remote]]]
+            host = $(rose host-select {{ EXTRACT_HOST }})
+
+    [[UMBUILD_RESOURCE]]
+        inherit = HPC
+        {% if USE_RAMDISK %}
+        script = """
+           rose task-run --verbose --define=fast-dest-root-orig=$TMPDIR --define=fast-dest-root-cont=$TMPDIR --define='args=$ARCHIVE_FCM_MAKE_CMD'
+        """
+        {% endif %}
+        [[[job]]]
+            execution time limit = PT1H50M
+        [[[directives]]]
+            -l ncpus = 6
+            -l mem = 4GB
+            -q = shared
+            {% if USE_RAMDISK %}
+            -l tmpsize=4gb
+            {% endif %}                    
+
+    [[OCEANBUILD]]
+        inherit = EXTRACT_RESOURCE
+
+    [[OCEANBUILD_RESOURCE]]
+        inherit = HPC
+        {% if USE_RAMDISK %}
+        script = """
+            rose task-run --verbose --define=fast-dest-root-orig=$TMPDIR --define=fast-dest-root-cont=$TMPDIR --define='args=$ARCHIVE_FCM_MAKE_CMD'
+        """
+        {% endif %}
+        [[[job]]]
+            execution time limit = PT20M
+        [[[environment]]]
+            ROSE_TASK_N_JOBS = 6
+            {% if ARCHIVE_FCM_MAKE == true %}
+            ARCHIVE_FCM_MAKE_CMD = --archive
+            {% else %}
+            ARCHIVE_FCM_MAKE_CMD =
+            {% endif %}
+        [[[directives]]]
+            -l ncpus = 6
+            -l mem = 4GB
+            -q = shared
+            {% if USE_RAMDISK %}
+            -l tmpsize = 4gb
+            {% endif %}   
+
+    [[DRIVERS_BUILD_RESOURCE]]
+        inherit = HPC_SERIAL
+
+    [[PLOT_LOADBALANCE_RESOURCE]]
+        inherit = HPC_SERIAL
+
+    [[TEST_CPMIP_NORMS_RESOURCE]]
+        inherit = HPC_SERIAL
+            
+    [[PPBUILD_RESOURCE]]
+        inherit = HPC_SERIAL
+            
+    [[INSTALL_ANCIL_RESOURCE]]
+        inherit = HPC_SERIAL
+        [[[job]]]
+            execution time limit = PT1M
+
+    [[CLEAROUT_RESOURCE]]
+        inherit = HPC_SERIAL
+
+    [[RCF_RESOURCE]]
+        inherit = UMBUILD, HPC
+        [[[job]]]
+            execution time limit = PT50M
+        [[[directives]]]
+            -l select=1:subproject={{SUBPROJECT_OTHER if SUBPROJECT == 'other' else SUBPROJECT}}:funding={{FUNDING_OTHER if FUNDING == 'other' else FUNDING}}:coretype={{CORE}}
+            -q = normal
+        [[[environment]]]
+            ROSE_LAUNCHER = aprun
+            ROSE_APP_OPT_CONF_KEYS = {{UM_OPT_KEYS}}
+            ROSE_LAUNCHER_PREOPTS = -ss -n {{RCF_PROCX * RCF_PROCY}} -d 1 -j 1
+
+    [[UM_RESOURCE]]
+        [[[environment]]]
+            {% set ATMOS_NODES = (((ATM_PROCX*ATM_PROCY+(IOS_NPROC if IOS_NPROC is defined else 0))*OMPTHR_ATM)/(APPN*HYPERTHREADS))|round(0,"ceil")|int %}
+            {% set ATMO_PPNU   = ((ATM_PROCX * ATM_PROCY + (IOS_NPROC if IOS_NPROC is defined else 0))/ATMOS_NODES/2)|round(0,'ceil')|int %}
+            ROSE_LAUNCHER_PREOPTS_UM = -n {{UM_ATM_NPROC}} -N {{2*ATMO_PPNU}} -S {{ATMO_PPNU}} -d {{OMPTHR_ATM}} -j {{HYPERTHREADS}} env OMP_NUM_THREADS={{OMPTHR_ATM}} env HYPERTHREADS={{HYPERTHREADS}}
+
+    [[NEMO_RESOURCE]]
+         [[[environment]]]
+            {% set OCEAN_NODES = (NEMO_NPROC*OMPTHR_OCN/(OPPN*OHYPERTHREADS))|round(0,"ceil")|int %}
+            {% set OCEAN_PPNU =(NEMO_NPROC/OCEAN_NODES/2)|round(0,'ceil')|int %}
+            ROSE_LAUNCHER_PREOPTS_NEMO = -n {{NEMO_NPROC}} -N {{2*OCEAN_PPNU}} -S {{OCEAN_PPNU}} -d {{OMPTHR_OCN}} -j {{OHYPERTHREADS}} env OMP_NUM_THREADS={{OMPTHR_OCN}} env HYPERTHREADS={{OHYPERTHREADS}}
+            {% if XIOS_NPROC is defined and XIOS_NPROC > 0 %}
+              {% set XIOS_NPROC = XIOS_NPROC if XIOS_NPROC is defined else 0 %}
+              {% set XIOS_NODES = (XIOS_NPROC/XPPN)|round(0,'ceil')|int %}
+              {% set XIOS_PPNU = (XIOS_NPROC/XIOS_NODES/2)|round(0,'ceil')|int %}
+            ROSE_LAUNCHER_PREOPTS_XIOS = -ss -n {{XIOS_NPROC}} -N {{2*XIOS_PPNU}} -S {{XIOS_PPNU}} -d 1 -j 1 env OMP_NUM_THREADS=1 env HYPERTHREADS=1
+            {% endif %}
+
+    [[COUPLE_RESOURCE]]
+        inherit = HPC
+        pre-script = "{{MODULE_CMD}} module load craype-hugepages8M; source $UMDIR/mule/modules/setup; module load um_tools; module list"
+        [[[job]]]
+            {% if RETRIES > 0 %}
+            execution retry delays = {{RETRIES}}*PT3H
+            {% endif %}
+            execution time limit = PT{{'%02d' % (CLOCK[0])}}H{{'%02d' % (CLOCK[1])}}M{{'%02d' % (CLOCK[2])}}S
+        [[[environment]]]
+            ROSE_LAUNCHER = aprun
+            COUPLED_PLATFORM = XC40
+            {% if IOS_NPROC > 0 %}
+            MPICH_MAX_THREAD_SAFETY = multiple
+            MPICH_NEMESIS_ASYNC_PROGRESS = mc
+            {% else %}
+            MPICH_COLL_SYNC = MPI_Gatherv
+            {% endif %}
+            MPICH_GNI_ROUTING_MODE = ADAPTIVE_2
+            OMP_STACKSIZE = 2G
+        [[[directives]]]
+            -l select = {{ATMOS_NODES + OCEAN_NODES + (XIOS_NODES if XIOS_NODES is defined else 0)}}:subproject={{SUBPROJECT_OTHER if SUBPROJECT == 'other' else SUBPROJECT}}:funding={{FUNDING_OTHER if FUNDING == 'other' else FUNDING}}:coretype={{CORE}}
+            -q = normal
+
+    [[POSTPROC]]
+        [[[environment]]]
+            MOOPROJECT = project-ukesm
+
+    [[POSTPROC_RESOURCE]]
+        inherit = HPC_SERIAL
+        pre-script = "module load cray-netcdf; module load scitools/production-os41-1; ulimit -s unlimited; ulimit -n 4096"
+        [[[job]]]
+            execution retry delays = PT10M, PT1H, PT3H, P1D
+            execution time limit = PT3H
+        [[[environment]]]
+            CYCLEPERIOD = $( rose date $CYLC_TASK_CYCLE_POINT $CYLC_TASK_CYCLE_POINT --calendar {{CALENDAR}} --offset2 {{FMT}} -f y,m,d,h,M,s )
+        [[[directives]]]
+            -l mem = 70GB
+
+    [[PPTRANSFER_RESOURCE]]
+        inherit = HPC_SERIAL
+        pre-script = module load scitools/production-os41-1
+        [[[job]]]
+            execution time limit = PT1H
+
+    [[HOUSEKEEP_RESOURCE]]
+        [[[job]]]
+            batch system = background
+        [[[remote]]]
+            host = localhost
+
+    [[INITCFC_RESOURCE]]
+        inherit = OCEANBUILD_RESOURCE
+        pre-script = "module load cray-netcdf; module load nco"
+        [[[environment]]]
+            INIT_SRC = $OCEANDIR/hadgem3/initial/ocean/eORCA1v2.2x/init_zero_trc.nc
+
+{% include 'site/' + SITE + '_tests.rc' %}

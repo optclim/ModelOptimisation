@@ -1,0 +1,62 @@
+{% if CMIP6_EXP %}
+    [[validate_suite_info]]
+         pre-script = "export ROSE_HOME=$(rose --version | cut -d'(' -f2 | cut -d')' -f1 )"
+         [[[environment]]]
+             ROSE_TASK_APP = validate_suite_info
+{% endif %}
+
+    [[root]]
+         [[[environment]]]
+{% if EXPERIMENT_BASIS is defined %}
+  {% set EXPTBASIS = '%04d%02d%02dT%02d%02dZ' % (EXPERIMENT_BASIS[0],EXPERIMENT_BASIS[1],
+                                                 EXPERIMENT_BASIS[2],EXPERIMENT_BASIS[3],
+                                                 EXPERIMENT_BASIS[4]) %}
+            EXPERIMENT_INITIAL_CYCLE_POINT = {{EXPTBASIS}}
+{% else %}
+            EXPERIMENT_INITIAL_CYCLE_POINT = $CYLC_SUITE_INITIAL_CYCLE_POINT
+{% endif %}
+
+    [[nemo_anomaly]]
+        inherit = None, HOUSEKEEP_RESOURCE
+        script  = test_nemo_anom.sh
+
+    [[init_cfc_age_dump]]
+        inherit = None, INITCFC_RESOURCE    
+        script = add_CFC_AGE_IDTRA_to_dump.sh
+
+{% if POSTPROC %}
+  {% if SPLIT_PP %}
+    [[postproc_nemo]]
+        [[[environment]]]
+             ROSE_APP_OPT_CONF_KEYS = {{ SITE }} nemorst
+
+    [[postproc_nemo_grid]]
+        inherit = None, POSTPROC_GROUP, POSTPROC
+        [[[environment]]]
+            ROSE_APP_OPT_CONF_KEYS = {{ SITE }} nemodiags
+            IBERG_TRAJECTORY = true
+            FIELDS = "grid_T,grid_U,grid_V,grid_W"
+
+    [[postproc_nemo_diaptr]]
+        inherit = None, POSTPROC_GROUP, POSTPROC
+        [[[environment]]]
+            ROSE_APP_OPT_CONF_KEYS = {{ SITE }} nemodiags
+            FIELDS = "diaptr,trnd3d,scalar"
+            IBERG_TRAJECTORY = false
+
+    [[postproc_nemo_ptrc]]
+        inherit = None, POSTPROC_GROUP, POSTPROC
+        [[[environment]]]
+            ROSE_APP_OPT_CONF_KEYS = {{ SITE }} nemodiags
+            FIELDS = "ptrc_T,diad_T"
+            IBERG_TRAJECTORY = false
+
+    [[postproc_nemo_ptrd]]
+        inherit = None, POSTPROC_GROUP, POSTPROC
+        [[[environment]]]
+            ROSE_APP_OPT_CONF_KEYS = {{ SITE }} nemodiags
+            FIELDS = "ptrd_T"
+            IBERG_TRAJECTORY = false
+
+  {% endif %}         
+{% endif %}

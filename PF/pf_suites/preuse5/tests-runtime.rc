@@ -1,0 +1,475 @@
+{% if TEST_RESTART %}
+    [[RESTART_TEST]]
+
+    [[coupled_crun]]
+        inherit = None, COUPLED, RESTART_TEST, COUPLED_TEST
+        [[[environment]]]
+            DATAM = $ROSE_DATA/coupled_crun
+            DATAW = $ROSE_DATA/coupled_crun
+            ROSE_APP_OPT_CONF_KEYS = {{UM_OPT_KEYS}} {{RESTART_OPT_KEYS}} iodef-test 
+            TASKEND    = $( rose date $CYLC_SUITE_INITIAL_CYCLE_POINT $CYLC_TASK_CYCLE_POINT --calendar {{CALENDAR}} --offset2 {{CYCLE_CRUN}} --print-format y,m,d,h,M,s )
+            TASKLENGTH = $( rose date $CYLC_TASK_CYCLE_POINT $CYLC_TASK_CYCLE_POINT --calendar {{CALENDAR}} --offset2 {{CYCLE_CRUN}} -f y,m,d,h,M,s )
+    
+    [[coupled_lrun]]
+        inherit = None, COUPLED, RESTART_TEST, COUPLED_TEST
+        [[[environment]]]
+            DATAM = $ROSE_DATA/coupled_lrun
+            DATAW = $ROSE_DATA/coupled_lrun
+            ROSE_APP_OPT_CONF_KEYS = {{UM_OPT_KEYS}} {{RESTART_OPT_KEYS}} iodef-test 
+            TASKEND    = $( rose date $CYLC_SUITE_INITIAL_CYCLE_POINT $CYLC_TASK_CYCLE_POINT --calendar {{CALENDAR}} --offset2 {{CYCLE_LRUN}} --print-format y,m,d,h,M,s )
+            TASKLENGTH = $( rose date $CYLC_TASK_CYCLE_POINT $CYLC_TASK_CYCLE_POINT --calendar {{CALENDAR}} --offset2 {{CYCLE_LRUN}} -f y,m,d,h,M,s )
+
+    [[coupled_nrun]]
+        inherit = None, COUPLED, RESTART_TEST, COUPLED_TEST
+        [[[environment]]]
+            CONTINUE = ""
+            ROSE_APP_OPT_CONF_KEYS = {{UM_OPT_KEYS}} {{RESTART_OPT_KEYS}} iodef-test $(if [[ $CYLC_TASK_CYCLE_POINT == $CYLC_SUITE_INITIAL_CYCLE_POINT ]]; then echo ""; else echo "nrun bitcomp"; fi)
+            DATAM = $ROSE_DATA/coupled_nrun/${CYLC_TASK_CYCLE_POINT}
+            DATAW = $ROSE_DATA/coupled_nrun/${CYLC_TASK_CYCLE_POINT}
+            MODELBASIS = $(rose date --print-format='%Y,%m,%d,%H,%M,%S' $CYLC_TASK_CYCLE_POINT)
+{% if CYCLE_TEST == 'D' %}
+            TASKEND    = 0,0,{{RESUB_TEST}},0,0,0
+{% elif CYCLE_TEST == 'M' %}
+            TASKEND    = 0,{{RESUB_TEST}},0,0,0,0
+{% endif %}
+
+            TASKLENGTH = $( rose date $CYLC_TASK_CYCLE_POINT $CYLC_TASK_CYCLE_POINT --calendar {{CALENDAR}} --offset2 {{CYCLE_NRUN}} -f y,m,d,h,M,s )
+            PREVIOUS_CYCLE_NRUN=$(rose date --print-format='%Y%m%dT%H%MZ' $CYLC_TASK_CYCLE_POINT --offset=-{{CYCLE_NRUN}})
+            DUMP_TIME=$(rose date --print-format='%Y%m%d_%H' $CYLC_TASK_CYCLE_POINT )
+            ASTART_NRUN=$(if [[ $CYLC_TASK_CYCLE_POINT == $CYLC_SUITE_INITIAL_CYCLE_POINT ]]; then echo ""; else echo "$ROSE_DATA/coupled_nrun/${PREVIOUS_CYCLE_NRUN}/${RUNID}a.da${DUMP_TIME}"; fi)
+
+            NEMO_RESTART_MULTI = $( if [[ $CYLC_TASK_CYCLE_POINT == $CYLC_SUITE_INITIAL_CYCLE_POINT ]]; then echo ""; else echo \
+"$ROSE_DATA/coupled_nrun/${PREVIOUS_CYCLE_NRUN}/NEMOhist/${RUNID}o_$(rose date --print-format='%Y%m%d' ${CYLC_TASK_CYCLE_POINT})_restart"; fi )
+            ICEBERG_RESTART_MULTI = $( if [[ $CYLC_TASK_CYCLE_POINT == $CYLC_SUITE_INITIAL_CYCLE_POINT ]]; then echo ""; else echo \
+"$ROSE_DATA/coupled_nrun/${PREVIOUS_CYCLE_NRUN}/NEMOhist/${RUNID}o_icebergs_$(rose date --print-format='%Y%m%d' ${CYLC_TASK_CYCLE_POINT})_restart"; fi )
+
+            NEMO_START = $( if [[ $CYLC_TASK_CYCLE_POINT == $CYLC_SUITE_INITIAL_CYCLE_POINT ]]; then echo ""; else echo "${NEMO_RESTART_MULTI}.nc"; fi )
+            NEMO_ICEBERGS_START=$( if [[ $CYLC_TASK_CYCLE_POINT == $CYLC_SUITE_INITIAL_CYCLE_POINT ]]; then echo ""; else echo "${ICEBERG_RESTART_MULTI}.nc"; fi )
+            CICE_INIT = $( if [[ $CYLC_TASK_CYCLE_POINT != $CYLC_SUITE_INITIAL_CYCLE_POINT ]]; then echo "$ROSE_DATA/coupled_nrun/${PREVIOUS_CYCLE_NRUN}/CICEhist/${RUNID}i.restart.$(rose date --print-format='%Y-%m-%d' ${CYLC_TASK_CYCLE_POINT})-00000.nc"; else echo ""; fi )
+            MEDUSA_START = $( if [[ $CYLC_TASK_CYCLE_POINT == $CYLC_SUITE_INITIAL_CYCLE_POINT ]]; then echo ""; else echo \
+"$ROSE_DATA/coupled_nrun/${PREVIOUS_CYCLE_NRUN}/NEMOhist/${RUNID}o_$(rose date --print-format='%Y%m%d' ${CYLC_TASK_CYCLE_POINT})_restart_trc"; fi )
+            
+{% endif %}
+
+
+
+{% if TEST_RESTART or TEST_PE_DECOMP %}
+    [[ROSE_ANA_RESTART]]
+        inherit = None, ROSE_ANA_RESTART_RESOURCE
+        [[[environment]]]
+            ROSE_TASK_APP = rose_ana_restart
+{% endif %}
+
+{% if TEST_RESTART or TEST_PE_DECOMP%}
+    [[NEMO_REBUILD]]
+        [[[environment]]]
+            ROSE_TASK_APP = nemo_rebuild_restart
+            REBUILD_NEMO_SCRIPT=$OCEANDIR/nemo/utils/bin/rebuild_nemo
+            NUM_RESTART_FILES={{NEMO_NPROC}}
+{% endif %}
+
+{% if TEST_RESTART %}
+            
+    [[nemo_rebuild_restart_lrun]]
+        inherit = None, NEMO_REBUILD, NEMO_REBUILD_RESOURCE, RESTART_TEST 
+        [[[environment]]]
+            NEMO_RESTART_PATH = $ROSE_DATA/coupled_lrun/NEMOhist/${RUNID}o_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_LRUN}})_restart
+            ICEBERG_RESTART_PATH = $ROSE_DATA/coupled_lrun/NEMOhist/${RUNID}o_icebergs_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_LRUN}})_restart
+            ICB_RESTART_PATH = $ROSE_DATA/coupled_lrun/NEMOhist/${RUNID}o_icebergs_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_LRUN}})_restart_
+            ICEBERG_REBUILT_PATH = $ROSE_DATA/coupled_lrun/NEMOhist/${RUNID}o_icebergs_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_LRUN}})_restart.nc
+            
+    [[nemo_rebuild_restart_crun]]
+        inherit = None, NEMO_REBUILD, NEMO_REBUILD_RESOURCE, RESTART_TEST
+        [[[environment]]]
+            NEMO_RESTART_PATH = $ROSE_DATA/coupled_crun/NEMOhist/${RUNID}o_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_CRUN}})_restart
+            ICEBERG_RESTART_PATH = $ROSE_DATA/coupled_crun/NEMOhist/${RUNID}o_icebergs_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_CRUN}})_restart
+            ICB_RESTART_PATH = $ROSE_DATA/coupled_crun/NEMOhist/${RUNID}o_icebergs_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_CRUN}})_restart_
+            ICEBERG_REBUILT_PATH = $ROSE_DATA/coupled_crun/NEMOhist/${RUNID}o_icebergs_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_CRUN}})_restart.nc  
+
+
+    [[rose_ana_lrun_crun]]
+        inherit = None, ROSE_ANA_RESTART, RESTART_TEST
+        [[[environment]]]
+            ROSE_APP_OPT_CONF_KEYS= atmos-norm solver-norm atmos-dump nemo-dump cice-dump 
+            LRUN_CYCLE_POINT = $(rose date -c --print-format='%Y%m%dT%H%MZ' --offset=-{{CYCLE_CRUN}})
+            NEMO_SOLVER_FILE1=$CYLC_SUITE_WORK_DIR/${LRUN_CYCLE_POINT}/coupled_lrun/solver.stat
+            NEMO_SOLVER_FILE2=$CYLC_SUITE_WORK_DIR/${CYLC_TASK_CYCLE_POINT}/coupled_crun/solver.stat
+            NEMO_FILE1=$ROSE_DATA/coupled_lrun/NEMOhist/${RUNID}o_$(rose date -c --print-format='%Y%m%d' --offset={{CYCLE_CRUN}})_restart.nc
+            NEMO_FILE2=$ROSE_DATA/coupled_crun/NEMOhist/${RUNID}o_$(rose date -c --print-format='%Y%m%d' --offset={{CYCLE_CRUN}})_restart.nc
+            CICE_FILE1=$ROSE_DATA/coupled_lrun/CICEhist/${RUNID}i.restart.$(rose date -c --print-format='%Y-%m-%d-%H%M' --offset={{CYCLE_CRUN}})0.nc
+            CICE_FILE2=$ROSE_DATA/coupled_crun/CICEhist/${RUNID}i.restart.$(rose date -c --print-format='%Y-%m-%d-%H%M' --offset={{CYCLE_CRUN}})0.nc
+            ATMOS_DUMP_TIME=$(rose date -c --print-format='%Y%m%d_%H' $CYLC_TASK_CYCLE_POINT --offset={{CYCLE_NRUN}})
+            ATMOS_DUMP1 = $ROSE_DATA/coupled_lrun/${RUNID}a.da${ATMOS_DUMP_TIME}
+            ATMOS_DUMP2 = $ROSE_DATA/coupled_crun/${RUNID}a.da${ATMOS_DUMP_TIME}
+            ATMOS_NORM1 = $CYLC_SUITE_WORK_DIR/${LRUN_CYCLE_POINT}/coupled_lrun/pe_output/${RUNID}.fort6.pe0
+            ATMOS_NORM2 = $CYLC_SUITE_WORK_DIR/$CYLC_TASK_CYCLE_POINT/coupled_crun/pe_output/${RUNID}.fort6.pe0
+            SOLVER_TIMESTEP_OFFSET=0
+
+{% if CHECK_RESTART_DIAGNOSTICS %}
+    [[rose_ana_diag_lrun_crun]]
+        inherit = None, ROSE_ANA_RESTART, RESTART_TEST
+        [[[environment]]]
+            ROSE_TASK_APP = rose_ana_restart_diag
+            LRUN_CYCLE_POINT = $(rose date -c --print-format='%Y%m%dT%H%MZ' --offset=-{{CYCLE_CRUN}} )
+            LRUN_START_POINT =  $(rose date -c --print-format='%Y%m%d' --offset=-{{CYCLE_CRUN}} )
+            CRUN_START_POINT =  $(rose date -c --print-format='%Y%m%d' )
+            END_POINT = $(rose date -c --print-format='%Y%m%d' --offset={{CYCLE_CRUN}} --offset=-P1D)
+            NEMO_DIAG_T_RUN1=${CYLC_SUITE_WORK_DIR}/${LRUN_CYCLE_POINT}/coupled_lrun/${RUNID}o_1d_${LRUN_START_POINT}_${END_POINT}_grid_T.nc 
+            NEMO_DIAG_T_RUN2=${CYLC_SUITE_WORK_DIR}/${CYLC_TASK_CYCLE_POINT}/coupled_crun/${RUNID}o_1d_${CRUN_START_POINT}_${END_POINT}_grid_T.nc
+            CICE_END_POINT= $(rose date -c --print-format='%Y-%m-%d' --offset={{CYCLE_NRUN}} --offset=-P1D )
+            CICE_DIAG_LAST_DAY1=${CYLC_SUITE_WORK_DIR}/${LRUN_CYCLE_POINT}/coupled_lrun/${RUNID}i.10d_24h.${CICE_END_POINT}-00000.nc
+            CICE_DIAG_LAST_DAY2=${CYLC_SUITE_WORK_DIR}/${CYLC_TASK_CYCLE_POINT}/coupled_crun/${RUNID}i.10d_24h.${CICE_END_POINT}-00000.nc
+            
+{% endif %}       
+{% if TEST_NRUN_NRUN %}
+    [[nemo_rebuild_restart_nrun]]
+        inherit = None, NEMO_REBUILD, NEMO_REBUILD_RESOURCE , RESTART_TEST
+        [[[environment]]]
+            NEMO_RESTART_PATH = $ROSE_DATA/coupled_nrun/${CYLC_TASK_CYCLE_POINT}/NEMOhist/${RUNID}o_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_NRUN}})_restart
+            ICEBERG_RESTART_PATH = $ROSE_DATA/coupled_nrun/${CYLC_TASK_CYCLE_POINT}/NEMOhist/${RUNID}o_icebergs_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_NRUN}})_restart
+            ICB_RESTART_PATH = $ROSE_DATA/coupled_nrun/${CYLC_TASK_CYCLE_POINT}/NEMOhist/${RUNID}o_icebergs_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_NRUN}})_restart_
+            ICEBERG_REBUILT_PATH = $ROSE_DATA/coupled_nrun/${CYLC_TASK_CYCLE_POINT}/NEMOhist/${RUNID}o_icebergs_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_NRUN}})_restart.nc
+
+    [[rose_ana_lrun_nrun]]
+        inherit = None, ROSE_ANA_RESTART, RESTART_TEST
+        [[[environment]]]
+            ROSE_APP_OPT_CONF_KEYS= atmos-norm solver-norm atmos-dump nemo-dump cice-dump 
+            LRUN_CYCLE_POINT = $(rose date -c --print-format='%Y%m%dT%H%MZ' --offset=-{{CYCLE_NRUN}})
+            NEMO_SOLVER_FILE1=$CYLC_SUITE_WORK_DIR/${LRUN_CYCLE_POINT}/coupled_lrun/solver.stat
+            NEMO_SOLVER_FILE2=$CYLC_SUITE_WORK_DIR/${CYLC_TASK_CYCLE_POINT}/coupled_nrun/solver.stat
+            NEMO_FILE1=$ROSE_DATA/coupled_lrun/NEMOhist/${RUNID}o_$(rose date -c --print-format='%Y%m%d' --offset={{CYCLE_NRUN}})_restart.nc
+            NEMO_FILE2=$ROSE_DATA/coupled_nrun/${CYLC_TASK_CYCLE_POINT}/NEMOhist/${RUNID}o_$(rose date -c --print-format='%Y%m%d' --offset={{CYCLE_NRUN}})_restart.nc
+            CICE_FILE1=$ROSE_DATA/coupled_lrun/CICEhist/${RUNID}i.restart.$(rose date -c --print-format='%Y-%m-%d-%H%M' --offset={{CYCLE_NRUN}})0.nc
+            CICE_FILE2=$ROSE_DATA/coupled_nrun/${CYLC_TASK_CYCLE_POINT}/CICEhist/${RUNID}i.restart.$(rose date -c --print-format='%Y-%m-%d-%H%M' --offset={{CYCLE_NRUN}})0.nc
+            ATMOS_DUMP_TIME=$(rose date -c --print-format='%Y%m%d_%H' $CYLC_TASK_CYCLE_POINT --offset={{CYCLE_NRUN}})
+            ATMOS_DUMP1 = $ROSE_DATA/coupled_lrun/${RUNID}a.da${ATMOS_DUMP_TIME}
+            ATMOS_DUMP2 = $ROSE_DATA/coupled_nrun/$CYLC_TASK_CYCLE_POINT/${RUNID}a.da${ATMOS_DUMP_TIME}
+            ATMOS_NORM1 = $CYLC_SUITE_WORK_DIR/${LRUN_CYCLE_POINT}/coupled_lrun/pe_output/${RUNID}.fort6.pe0
+            ATMOS_NORM2 = $CYLC_SUITE_WORK_DIR/$CYLC_TASK_CYCLE_POINT/coupled_nrun/pe_output/${RUNID}.fort6.pe0
+            DAYS_ELAPSED_AT_CYCLE= $(rose date --calendar=365day ${CYLC_SUITE_INITIAL_CYCLE_POINT} ${CYLC_TASK_CYCLE_POINT} -f d)
+            SOLVER_TIMESTEP_OFFSET=$(expr {{OCEAN_SEAICE_TIMESTEPS_PER_DAY}} \* ${DAYS_ELAPSED_AT_CYCLE})        
+            
+            
+{% if CHECK_RESTART_DIAGNOSTICS %}
+    [[rose_ana_diag_lrun_nrun]]
+        inherit = None, ROSE_ANA_RESTART, RESTART_TEST
+        [[[environment]]]
+            ROSE_TASK_APP = rose_ana_restart_diag
+            LRUN_CYCLE_POINT = $( rose date -c --print-format='%Y%m%dT%H%MZ' --offset=-{{CYCLE_NRUN}} )
+            LRUN_START_POINT = $( rose date -c --print-format='%Y%m%d' --offset=-{{CYCLE_NRUN}} )
+            NRUN_START_POINT = $( rose date -c --print-format='%Y%m%d' )
+            END_POINT = $(rose date -c --print-format='%Y%m%d' --offset={{CYCLE_NRUN}} --offset=-P1D )
+            NEMO_DIAG_T_RUN1 = ${CYLC_SUITE_WORK_DIR}/${LRUN_CYCLE_POINT}/coupled_lrun/${RUNID}o_1d_${LRUN_START_POINT}_${END_POINT}_grid_T.nc 
+            NEMO_DIAG_T_RUN2 = ${CYLC_SUITE_WORK_DIR}/${CYLC_TASK_CYCLE_POINT}/coupled_nrun/${RUNID}o_1d_${NRUN_START_POINT}_${END_POINT}_grid_T.nc
+            CICE_END_POINT= $(rose date -c --print-format='%Y-%m-%d' --offset={{CYCLE_NRUN}} --offset=-P1D )
+            CICE_DIAG_LAST_DAY1=${CYLC_SUITE_WORK_DIR}/${LRUN_CYCLE_POINT}/coupled_lrun/${RUNID}i.10d_24h.${CICE_END_POINT}-00000.nc
+            CICE_DIAG_LAST_DAY2=${CYLC_SUITE_WORK_DIR}/${CYLC_TASK_CYCLE_POINT}/coupled_nrun/${RUNID}i.10d_24h.${CICE_END_POINT}-00000.nc
+            
+            
+{% endif %}
+
+{% endif %}
+
+    [[housekeeping_restart_work]]         
+        inherit = None, TEST_RESOURCE
+{% if TEST_NRUN_NRUN %}
+        script = "housekeeping_restart work --lrun_work=${LRUN_WORK_DIR} --crun_work_1=${CRUN1_WORK_DIR} --crun_work_2=${CRUN2_WORK_DIR}  --nrun_work_1=${NRUN1_WORK_DIR} --nrun_work_2=${NRUN2_WORK_DIR}"
+{% else %}
+        script = "housekeeping_restart work --lrun_work=${LRUN_WORK_DIR} --crun_work_1=${CRUN1_WORK_DIR} --crun_work_2=${CRUN2_WORK_DIR} "
+{% endif %}
+
+        [[[environment]]]
+            LRUN_CYCLE_POINT = $(rose date -c --print-format='%Y%m%dT%H%MZ' --offset=-{{CYCLE_NRUN}})
+            LRUN_WORK_DIR=$CYLC_SUITE_WORK_DIR/${LRUN_CYCLE_POINT}/coupled_lrun
+            CRUN1_WORK_DIR=$CYLC_SUITE_WORK_DIR/${LRUN_CYCLE_POINT}/coupled_crun
+            CRUN2_WORK_DIR=$CYLC_SUITE_WORK_DIR/${CYLC_TASK_CYCLE_POINT}/coupled_crun/
+{% if TEST_NRUN_NRUN %}
+            NRUN1_WORK_DIR=$CYLC_SUITE_WORK_DIR/${LRUN_CYCLE_POINT}/coupled_nrun
+            NRUN2_WORK_DIR=$CYLC_SUITE_WORK_DIR/${CYLC_TASK_CYCLE_POINT}/coupled_nrun/
+{% endif %}            
+
+
+    [[housekeeping_restart_work_first]]         
+        inherit = None, TEST_RESOURCE
+{% if TEST_NRUN_NRUN %}
+        script = "housekeeping_restart work --lrun_work=${LRUN_WORK_DIR} --crun_work_1=${CRUN1_WORK_DIR} --crun_work_2=${CRUN2_WORK_DIR}  --nrun_work_1=${NRUN1_WORK_DIR} --nrun_work_2=${NRUN2_WORK_DIR}"
+{% else %}
+        script = "housekeeping_restart work --lrun_work=${LRUN_WORK_DIR} --crun_work_1=${CRUN1_WORK_DIR} --crun_work_2=${CRUN2_WORK_DIR} "
+{% endif %}
+
+        [[[environment]]]
+            LRUN_CYCLE_POINT = $(rose date -c --print-format='%Y%m%dT%H%MZ' --offset=-{{CYCLE_NRUN}} --offset=-{{CYCLE_LRUN}} )
+            CRUN_CYCLE_POINT = $(rose date -c --print-format='%Y%m%dT%H%MZ' --offset=-{{CYCLE_LRUN}} )
+            LRUN_WORK_DIR=$CYLC_SUITE_WORK_DIR/${LRUN_CYCLE_POINT}/coupled_lrun
+            CRUN1_WORK_DIR=$CYLC_SUITE_WORK_DIR/${LRUN_CYCLE_POINT}/coupled_crun
+            CRUN2_WORK_DIR=$CYLC_SUITE_WORK_DIR/${CRUN_CYCLE_POINT}/coupled_crun/
+{% if TEST_NRUN_NRUN %}
+            NRUN1_WORK_DIR=$CYLC_SUITE_WORK_DIR/${LRUN_CYCLE_POINT}/coupled_nrun
+            NRUN2_WORK_DIR=$CYLC_SUITE_WORK_DIR/${CRUN_CYCLE_POINT}/coupled_nrun/
+{% endif %} 
+
+    [[housekeeping_restart_share]]         
+        inherit = None, TEST_RESOURCE
+{% if TEST_NRUN_NRUN %}
+        script = "housekeeping_restart shared --lrun_shared=${LRUN_SHARED} --crun_shared=${CRUN_SHARED} --nrun_shared=${NRUN_SHARED} "
+{% else %}
+        script = "housekeeping_restart shared --lrun_shared=${LRUN_SHARED} --crun_shared=${CRUN_SHARED} "
+{% endif %}
+        [[[environment]]]
+            LRUN_CYCLE_POINT = $(rose date -c --print-format='%Y%m%dT%H%MZ' --offset=-{{CYCLE_NRUN}})
+            LRUN_SHARED=${CYLC_SUITE_SHARE_DIR}/data/coupled_lrun/
+            CRUN_SHARED=${CYLC_SUITE_SHARE_DIR}/data/coupled_crun/
+{% if TEST_NRUN_NRUN %}
+            NRUN_SHARED=${CYLC_SUITE_SHARE_DIR}/data/coupled_nrun/
+{% endif %}
+
+{% if TEST_KGO %}
+    [[rose_ana_kgo]]
+        inherit = None, ROSE_ANA_RESTART
+        [[[environment]]]
+            ROSE_APP_OPT_CONF_KEYS= atmos-norm solver-norm
+            NEMO_SOLVER_FILE1={{KGO_DIR}}/{{KGO_OCEAN_NORM_FILE}}
+            NEMO_SOLVER_FILE2=$CYLC_SUITE_WORK_DIR/${CYLC_TASK_CYCLE_POINT}/coupled_lrun/solver.stat
+            ATMOS_NORM1 = {{KGO_DIR}}/{{KGO_ATMOS_NORM_FILE}}
+            ATMOS_NORM2 = $CYLC_SUITE_WORK_DIR/${CYLC_TASK_CYCLE_POINT}/coupled_lrun/pe_output/${RUNID}.fort6.pe0
+            SOLVER_TIMESTEP_OFFSET=0
+{% endif %}
+
+{% endif %}
+
+
+{% if TEST_RIGOROUS_COMPILE %}
+    [[RIGOROUS_OPTIMISATION_TEST]]
+    {% if SITE in SINGLE_FCMUM %}
+        [[fcm_make_um_rigorous]]
+            inherit = None, UMBUILD, UMBUILD_RIG_RESOURCE, RIGOROUS_OPTIMISATION_TEST, FCM_MAKE
+            [[[environment]]]
+                ROSE_TASK_APP=fcm_make_um
+                FCM_MAKE_FILE = main
+                OPTIM_LEVEL=rigorous
+    {% else %}
+        [[fcm_make_um_rigorous]]
+            inherit = UMBUILD, EXTRACT_RESOURCE, RIGOROUS_OPTIMISATION_TEST, FCM_MAKE
+            [[[environment]]]
+                ROSE_TASK_APP=fcm_make_um
+                FCM_MAKE_FILE = slash
+                OPTIM_LEVEL=rigorous
+        [[fcm_make2_um_rigorous]]
+            inherit = UMBUILD, UMBUILD_RIG_RESOURCE, RIGOROUS_OPTIMISATION_TEST, FCM_MAKE
+            [[[environment]]]
+                ROSE_TASK_APP=fcm_make_um
+                FCM_MAKE_FILE = slash
+                OPTIM_LEVEL=rigorous
+    {% endif %}
+    
+
+    [[fcm_make_ocean_rigorous]]
+        inherit = None, OCEANBUILD, RIGOROUS_OPTIMISATION_TEST, FCM_MAKE
+        [[[environment]]]
+            OPTIM_LEVEL=rigorous
+            ROSE_TASK_APP = fcm_make_ocean
+        
+    [[fcm_make2_ocean_rigorous]]
+        inherit = None, OCEANBUILD_RESOURCE, RIGOROUS_OPTIMISATION_TEST, FCM_MAKE
+        [[[environment]]]
+            OPTIM_LEVEL=rigorous
+            ROSE_TASK_APP = fcm_make_ocean
+
+    {% set RIGOROUS_PATH='--path= --path=$CYLC_SUITE_SHARE_DIR/fcm_make_ocean_rigorous/build-ocean/bin/ --path=$CYLC_SUITE_SHARE_DIR/fcm_make_um_rigorous/build-*/bin/ --path=$CYLC_SUITE_SHARE_DIR/fcm_make_drivers/build/bin/' %}
+    
+    [[recon_rigorous]]
+        inherit = None, RECON, ATMOS_TIMESTEPS, OCEAN_SEAICE_TIMESTEPS, RIGOROUS_OPTIMISATION_TEST
+        script = ". $ROSE_DATA/etc/um_ancils_gl; . $ROSE_DATA/etc/nemo_ancils_gl; {{TASK_RUN_COMMAND}} {{RIGOROUS_PATH}}"
+        [[[environment]]]
+            ASTART_RIG=$ROSE_DATA/${RUNID}_rig.astart
+            ROSE_APP_OPT_CONF_KEYS = {{UM_OPT_KEYS}} rigorous
+            ROSE_APP_COMMAND_KEY=recon
+
+    [[coupled_rigorous]]
+        inherit = None, ATMOS, NEMO, CICE, COUPLE_RESOURCE_RIG, UM_RESOURCE, RIGOROUS_OPTIMISATION_TEST, COUPLED_TEST
+        script = ". $ROSE_DATA/etc/um_ancils_gl; . $ROSE_DATA/etc/nemo_ancils_gl; {{TASK_RUN_COMMAND}} {{RIGOROUS_PATH}}"
+        [[[environment]]]
+            ROSE_TASK_APP          = coupled
+            CALENDAR = {{CALENDAR}}
+            CONTINUE               = $( if [[ $CYLC_TASK_CYCLE_POINT == $CYLC_SUITE_INITIAL_CYCLE_POINT ]]; then echo ""; else echo "true"; fi )
+            ROSE_APP_OPT_CONF_KEYS = {{UM_OPT_KEYS}} rigorous alt-build iodef-test 
+            DATAM = $ROSE_DATA/coupled_rigorous
+            DATAW = $ROSE_DATA/coupled_rigorous
+            TASKEND    = $( rose date $CYLC_SUITE_INITIAL_CYCLE_POINT $CYLC_TASK_CYCLE_POINT --calendar {{CALENDAR}} --offset2 {{CYCLE_RIG}} --print-format y,m,d,h,M,s )
+            TASKLENGTH = $( rose date $CYLC_TASK_CYCLE_POINT $CYLC_TASK_CYCLE_POINT --calendar {{CALENDAR}} --offset2 {{CYCLE_RIG}} -f y,m,d,h,M,s )
+            ASTART_RIG=${ROSE_DATA}/${RUNID}_rig.astart
+            FCM_MAKE_DIR=${CYLC_SUITE_SHARE_DIR}/fcm_make_ocean_rigorous
+            
+    [[housekeeping_rigorous]]
+        inherit = None, TEST_RESOURCE
+        script='''
+rm -rf ${SHARED_DIR_RIG}
+rm -rf ${RIG_DIR_CYCLE1}
+rm -rf ${RIG_DIR_CYCLE2}
+'''
+        [[[environment]]]
+            SHARED_DIR_RIG = $ROSE_DATA/coupled_rigorous
+            FIRST_CYCLE = $(rose date -c --print-format='%Y%m%dT%H%MZ' --offset=-{{CYCLE_RIG}})
+            RIG_DIR_CYCLE1 = ${CYLC_SUITE_WORK_DIR}/${FIRST_CYCLE}/coupled_rigorous
+            RIG_DIR_CYCLE2 = ${CYLC_SUITE_WORK_DIR}/${CYLC_TASK_CYCLE_POINT}/coupled_rigorous
+
+{% endif %}
+
+{% if TEST_PE_DECOMP %}
+           
+    [[PED_TEST]]
+    
+{% set NEMO_NPROC_PED = NEMO_IPROC_PED * NEMO_JPROC_PED %}
+{% set PED_OCN = '%sx%s' % (NEMO_IPROC_PED, NEMO_JPROC_PED) %}
+    [[NEMO_PE_{{PED_OCN}}]]
+        [[[environment]]]
+            NEMO_IPROC = {{NEMO_IPROC_PED}}
+            NEMO_JPROC = {{NEMO_JPROC_PED}}
+{% if NEMO_LAND_SUPPRESS %}
+            NEMO_NPROC = {{NEMO_NPROC}}
+{% else %}
+            NEMO_NPROC = {{NEMO_NPROC_PED}}
+{% endif %}
+            CICE_BLKX  = {{ (CICE_COL / NEMO_IPROC_PED)| round(0,'ceil') |int }}
+            CICE_BLKY  = {{ (CICE_ROW / NEMO_JPROC_PED)| round(0,'ceil') |int }}
+
+    [[fcm_make_ocean_{{PED_OCN}}]]
+        inherit = None, OCEANBUILD, NEMO_PE_{{PED_OCN}}, PED_TEST, FCM_MAKE
+        [[[environment]]]
+            ROSE_TASK_APP = fcm_make_ocean
+            OPTIM_LEVEL=safe
+        
+    [[fcm_make2_ocean_{{PED_OCN}}]]
+        inherit = None, OCEANBUILD_RESOURCE, NEMO_PE_{{PED_OCN}}, PED_TEST, FCM_MAKE
+        [[[environment]]]
+            ROSE_TASK_APP = fcm_make_ocean
+            OPTIM_LEVEL=safe
+
+    [[NEMO_PED]]
+        inherit = NEMO_RESOURCE_PED, NEMO_PE_{{PED_OCN}}
+        [[[environment]]]
+            OCEAN_EXEC=$CYLC_SUITE_SHARE_DIR/fcm_make_ocean_{{PED_OCN}}/build-ocean/bin/nemo-cice.exe
+            NEMO_VERSION     = 306
+            TASKSTART        = $( rose date $CYLC_TASK_CYCLE_POINT --print-format %Y,%m,%d,%H,%M )
+            TASKLENGTH       = $( rose date $CYLC_TASK_CYCLE_POINT $CYLC_TASK_CYCLE_POINT --calendar {{CALENDAR}} --offset2 {{CYCLE_PED}} -f y,m,d,h,M,s )
+            XIOS_NPROC       = {{XIOS_NPROC}}
+            PREVIOUS_CYCLE_NRUN =
+            NEMO_RESTART_MULTI=
+            ICEBERG_RESTART_MULTI=
+            NEMO_START=
+            NEMO_ICEBERGS_START=                
+            
+    [[CICE_PED]]
+        inherit = None, CICE
+        [[[environment]]]
+{% if NEMO_LAND_SUPPRESS %}
+            CICE_NPROC = {{NEMO_NPROC}}
+{% else %}
+            CICE_NPROC = {{NEMO_NPROC_PED}}
+{% endif %}
+
+
+{% set COUPLED_PED1 = 'coupled_a%sx%s_o%s' % (ATM_PROCX_PED1, ATM_PROCY_PED1, PED_OCN) %}
+{% set COUPLED_PED2 = 'coupled_a%sx%s_o%s' % (ATM_PROCX_PED2, ATM_PROCY_PED2, PED_OCN) %}
+    [[ATMOS_PED1]]
+        inherit = None, UM_RESOURCE_PED1
+        [[[environment]]]
+            ATMOS_EXEC = $CYLC_SUITE_SHARE_DIR/fcm_make_um/build-atmos/bin/um-atmos.exe
+            UM_ATM_NPROCX      = {{ATM_PROCX_PED1}}
+            UM_ATM_NPROCY      = {{ATM_PROCY_PED1}}
+            FLUME_IOS_NPROC    = {{IOS_NPROC}}
+            TASKEND            = $( rose date $CYLC_SUITE_INITIAL_CYCLE_POINT $CYLC_TASK_CYCLE_POINT --calendar {{CALENDAR}} --offset2 {{CYCLE_PED}} --print-format y,m,d,h,M,s )
+
+    [[{{COUPLED_PED1}}]]
+        inherit = None, ATMOS_PED1, NEMO_PED, CICE_PED, COUPLE_RESOURCE_PED1, PED_TEST, COUPLED_TEST, ATMOS_TIMESTEPS, OCEAN_SEAICE_TIMESTEPS
+        script = ". $ROSE_DATA/etc/um_ancils_gl; . $ROSE_DATA/etc/nemo_ancils_gl; {{TASK_RUN_COMMAND}}"
+        [[[environment]]]
+            ROSE_TASK_APP          = coupled
+            CALENDAR               = {{CALENDAR}}
+            CONTINUE               = 
+            ROSE_APP_OPT_CONF_KEYS = {{UM_OPT_KEYS}} {{BITCOMP_NRUN_OPT}} lrun_nrun_base iodef-test decomposition alt-build
+            DATAM = $ROSE_DATA/{{COUPLED_PED1}}
+            DATAW = $ROSE_DATA/{{COUPLED_PED1}}
+            NEMO_DATA  = $ROSE_DATA/{{COUPLED_PED1}}/NEMO_{{PED_OCN}}
+            NEMO_RST   = $NEMO_DATA/
+            CICE_DATA  = $ROSE_DATA/{{COUPLED_PED1}}/CICE_{{PED_OCN}}
+            CICE_RST   = $CICE_DATA/
+            FCM_MAKE_DIR=${CYLC_SUITE_SHARE_DIR}/fcm_make_ocean_{{PED_OCN}}
+            
+    [[ATMOS_PED2]]
+        inherit = None, UM_RESOURCE_PED2
+        [[[environment]]]
+            ATMOS_EXEC = $CYLC_SUITE_SHARE_DIR/fcm_make_um/build-atmos/bin/um-atmos.exe
+            UM_ATM_NPROCX      = {{ATM_PROCX_PED2}}
+            UM_ATM_NPROCY      = {{ATM_PROCY_PED2}}
+            FLUME_IOS_NPROC    = {{IOS_NPROC}}
+            TASKEND            = $( rose date $CYLC_SUITE_INITIAL_CYCLE_POINT $CYLC_TASK_CYCLE_POINT --calendar {{CALENDAR}} --offset2 {{CYCLE_PED}} --print-format y,m,d,h,M,s )
+
+    [[{{COUPLED_PED2}}]]
+        inherit = None, ATMOS_PED2, NEMO_PED, CICE_PED, COUPLE_RESOURCE_PED2, PED_TEST, COUPLED_TEST, ATMOS_TIMESTEPS, OCEAN_SEAICE_TIMESTEPS
+        script = ". $ROSE_DATA/etc/um_ancils_gl; . $ROSE_DATA/etc/nemo_ancils_gl; {{TASK_RUN_COMMAND}}"
+        [[[environment]]]
+            ROSE_TASK_APP          = coupled
+            CALENDAR               = {{CALENDAR}}
+            CONTINUE               = 
+            ROSE_APP_OPT_CONF_KEYS = {{UM_OPT_KEYS}} {{BITCOMP_NRUN_OPT}} lrun_nrun_base  iodef-test  decomposition alt-build
+            DATAM = $ROSE_DATA/{{COUPLED_PED2}}
+            DATAW = $ROSE_DATA/{{COUPLED_PED2}}
+            NEMO_DATA  = $ROSE_DATA/{{COUPLED_PED2}}/NEMO_{{PED_OCN}}
+            NEMO_RST   = $NEMO_DATA/
+            CICE_DATA  = $ROSE_DATA/{{COUPLED_PED2}}/CICE_{{PED_OCN}}
+            CICE_RST   = $CICE_DATA/
+            FCM_MAKE_DIR=${CYLC_SUITE_SHARE_DIR}/fcm_make_ocean_{{PED_OCN}}
+
+    [[nemo_rebuild_restart_1]]
+        inherit = None, NEMO_REBUILD, NEMO_REBUILD_RESOURCE, PED_TEST
+        [[[environment]]]
+            NEMO_RESTART_PATH = $ROSE_DATA/{{COUPLED_PED1}}/NEMOhist/${RUNID}o_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_PED}})_restart
+            ICEBERG_RESTART_PATH = $ROSE_DATA/{{COUPLED_PED1}}/NEMOhist/${RUNID}o_icebergs_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_PED}})_restart
+            ICB_RESTART_PATH = $ROSE_DATA/{{COUPLED_PED1}}/NEMOhist/${RUNID}o_icebergs_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_PED}})_restart_
+            ICEBERG_REBUILT_PATH = $ROSE_DATA/{{COUPLED_PED1}}/NEMOhist/${RUNID}o_icebergs_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_PED}})_restart.nc
+            NUM_RESTART_FILES={{NEMO_NPROC_PED}}
+
+    [[nemo_rebuild_restart_2]]
+        inherit = None, NEMO_REBUILD, NEMO_REBUILD_RESOURCE, PED_TEST
+        [[[environment]]]
+            NEMO_RESTART_PATH = $ROSE_DATA/{{COUPLED_PED2}}/NEMOhist/${RUNID}o_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_PED}})_restart
+            ICEBERG_RESTART_PATH = $ROSE_DATA/{{COUPLED_PED2}}/NEMOhist/${RUNID}o_icebergs_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_PED}})_restart
+            ICB_RESTART_PATH = $ROSE_DATA/{{COUPLED_PED2}}/NEMOhist/${RUNID}o_icebergs_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_PED}})_restart_
+            ICEBERG_REBUILT_PATH = $ROSE_DATA/{{COUPLED_PED2}}/NEMOhist/${RUNID}o_icebergs_$(rose date -c  --print-format='%Y%m%d' --offset={{CYCLE_PED}})_restart.nc
+            NUM_RESTART_FILES={{NEMO_NPROC_PED}}
+
+    [[rose_ana_pe_decomp]]
+        inherit = None, ROSE_ANA_RESTART, PED_TEST
+        [[[environment]]]
+            ROSE_APP_OPT_CONF_KEYS= atmos-norm solver-norm atmos-dump nemo-dump cice-dump 
+            NEMO_SOLVER_FILE1=$CYLC_SUITE_WORK_DIR/${CYLC_TASK_CYCLE_POINT}/{{COUPLED_PED1}}/solver.stat
+            NEMO_SOLVER_FILE2=$CYLC_SUITE_WORK_DIR/${CYLC_TASK_CYCLE_POINT}/{{COUPLED_PED2}}/solver.stat
+            NEMO_FILE1=$ROSE_DATA/{{COUPLED_PED1}}/NEMOhist/${RUNID}o_$(rose date -c --print-format='%Y%m%d' --offset={{CYCLE_PED}})_restart.nc
+            NEMO_FILE2=$ROSE_DATA/{{COUPLED_PED2}}/NEMOhist/${RUNID}o_$(rose date -c --print-format='%Y%m%d' --offset={{CYCLE_PED}})_restart.nc
+            SOLVER_TIMESTEP_OFFSET=0
+            CICE_FILE1=$ROSE_DATA/{{COUPLED_PED1}}/CICEhist/${RUNID}i.restart.$(rose date -c --print-format='%Y-%m-%d-%H%M' --offset={{CYCLE_PED}})0.nc
+            CICE_FILE2=$ROSE_DATA/{{COUPLED_PED2}}/CICEhist/${RUNID}i.restart.$(rose date -c --print-format='%Y-%m-%d-%H%M' --offset={{CYCLE_PED}})0.nc
+            ATMOS_DUMP_TIME=$(rose date -c --print-format='%Y%m%d_%H' $CYLC_TASK_CYCLE_POINT --offset={{CYCLE_PED}})
+            ATMOS_DUMP1 = $ROSE_DATA/{{COUPLED_PED1}}/${RUNID}a.da${ATMOS_DUMP_TIME}
+            ATMOS_DUMP2 = $ROSE_DATA/{{COUPLED_PED2}}/${RUNID}a.da${ATMOS_DUMP_TIME}
+            ATMOS_NORM1 = $CYLC_SUITE_WORK_DIR/$CYLC_TASK_CYCLE_POINT/{{COUPLED_PED1}}/pe_output/${RUNID}.fort6.pe0
+            ATMOS_NORM2 = $CYLC_SUITE_WORK_DIR/$CYLC_TASK_CYCLE_POINT/{{COUPLED_PED2}}/pe_output/${RUNID}.fort6.pe0
+
+    [[housekeeping_ped]]
+        inherit = None, TEST_RESOURCE
+        script='''
+rm -rf ${SHARED_DIR_PED1}
+rm -rf ${SHARED_DIR_PED2}
+rm -rf ${WORK_DIR_PED1}
+rm -rf ${WORK_DIR_PED2}
+'''
+        [[[environment]]]
+            SHARED_DIR_PED1 = $ROSE_DATA/{{COUPLED_PED1}}
+            SHARED_DIR_PED2 = $ROSE_DATA/{{COUPLED_PED2}}
+            WORK_DIR_PED1 = ${CYLC_SUITE_WORK_DIR}/${CYLC_TASK_CYCLE_POINT}/{{COUPLED_PED1}}
+            WORK_DIR_PED2 = ${CYLC_SUITE_WORK_DIR}/${CYLC_TASK_CYCLE_POINT}/{{COUPLED_PED2}}
+            
+{% endif %}  #end TEST_PE_DECOMP
+
+

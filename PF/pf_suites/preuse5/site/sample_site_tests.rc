@@ -1,0 +1,49 @@
+   
+{% if TEST_RESTART or TEST_PE_DECOMP %}
+    [[NEMO_REBUILD_RESOURCE]]
+        inherit=None, HPC_SERIAL
+        [[[job]]]
+            execution time limit = {{REBUILD_TIME_LIMIT}}
+            
+{% endif %}            
+
+{% if TEST_RESTART or TEST_PE_DECOMP or TEST_RIGOROUS_COMPILE %}
+    [[TEST_RESOURCE]]
+        inherit = None, HPC_SERIAL
+        [[[job]]]
+            execution time limit = {{TEST_TIME_LIMIT}}
+
+    [[ROSE_ANA_RESTART_RESOURCE]]
+        inherit = None, TEST_RESOURCE
+        [[[environment]]]
+            PYTHONPATH=${CYLC_SUITE_RUN_DIR}/bin/:${PYTHONPATH}
+{% endif %}            
+            
+{% if TEST_RIGOROUS_COMPILE %}
+    [[UMBUILD_RIG_RESOURCE]]
+        inherit = UMBUILD_RESOURCE
+    
+    [[COUPLE_RESOURCE_RIG]]
+        inherit = COUPLE_RESOURCE
+        [[[job]]]
+            execution time limit = {{RIGOROUS_TEST_TIME_LIMIT}}
+{% endif %}            
+            
+{% if TEST_PE_DECOMP %}
+{% set UM_ATM_NPROC_PED1 = ATM_PROCX_PED1 * ATM_PROCY_PED1 + (IOS_NPROC if IOS_NPROC is defined else 0) %}
+    [[UM_RESOURCE_PED1]]
+
+{% set UM_ATM_NPROC_PED2 = ATM_PROCX_PED2 * ATM_PROCY_PED2 + (IOS_NPROC if IOS_NPROC is defined else 0) %}
+    [[UM_RESOURCE_PED2]]
+
+{% set NEMO_NPROC_PED = NEMO_IPROC_PED * NEMO_JPROC_PED %}
+    [[NEMO_RESOURCE_PED]]
+
+    [[COUPLE_RESOURCE_PED1]]
+          inherit = COUPLE_RESOURCE
+
+    [[COUPLE_RESOURCE_PED2]]
+          inherit = COUPLE_RESOURCE
+
+{% endif %}
+        

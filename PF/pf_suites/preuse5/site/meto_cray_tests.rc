@@ -1,0 +1,84 @@
+   
+{% if TEST_RESTART or TEST_PE_DECOMP %}
+    [[NEMO_REBUILD_RESOURCE]]
+        inherit=None, HPC_SERIAL
+        [[[job]]]
+            execution time limit = {{REBUILD_TIME_LIMIT}}
+        
+        [[[directives]]]
+            -l mem = 48gb
+            
+{% endif %}            
+
+{% if TEST_RESTART or TEST_PE_DECOMP or TEST_RIGOROUS_COMPILE %}
+    [[TEST_RESOURCE]]
+        inherit = None, HPC_SERIAL
+        pre-script = "module load scitools/production-os41-1"
+        [[[job]]]
+            execution time limit = {{TEST_TIME_LIMIT}}
+        [[[directives]]]
+            -l mem = 8gb
+
+    [[ROSE_ANA_RESTART_RESOURCE]]
+        inherit = None, TEST_RESOURCE
+        [[[environment]]]
+            PYTHONPATH=${CYLC_SUITE_RUN_DIR}/bin/:${PYTHONPATH}
+{% endif %}            
+            
+{% if TEST_RIGOROUS_COMPILE %}
+    [[UMBUILD_RIG_RESOURCE]]
+        inherit = UMBUILD_RESOURCE
+        [[[directives]]]
+            -l ncpus = 6
+            -l mem = 8GB
+            -q = shared
+            {% if USE_RAMDISK %}
+              -l tmpsize=8gb
+            {% endif %}            
+    
+    [[COUPLE_RESOURCE_RIG]]
+        inherit = COUPLE_RESOURCE
+        [[[job]]]
+            execution time limit = {{RIGOROUS_TEST_TIME_LIMIT}}
+{% endif %}            
+            
+{% if TEST_PE_DECOMP %}
+{% set UM_ATM_NPROC_PED1 = ATM_PROCX_PED1 * ATM_PROCY_PED1 + (IOS_NPROC if IOS_NPROC is defined else 0) %}
+    [[UM_RESOURCE_PED1]]
+        [[[environment]]]
+            {% set ATMOS_NODES_PED1 = ((UM_ATM_NPROC_PED1*OMPTHR_ATM)/(APPN*HYPERTHREADS))|round(0,"ceil")|int %}
+            {% set ATMO_PPNU_PED1   = (UM_ATM_NPROC_PED1/ATMOS_NODES_PED1/2)|round(0,'ceil')|int %}
+            ROSE_LAUNCHER_PREOPTS_UM = -n {{UM_ATM_NPROC_PED1}} -N {{2*ATMO_PPNU_PED1}} -S {{ATMO_PPNU_PED1}} -d {{OMPTHR_ATM}} -j {{HYPERTHREADS}} env OMP_NUM_THREADS={{OMPTHR_ATM}} env HYPERTHREADS={{HYPERTHREADS}}
+
+{% set UM_ATM_NPROC_PED2 = ATM_PROCX_PED2 * ATM_PROCY_PED2 + (IOS_NPROC if IOS_NPROC is defined else 0) %}
+    [[UM_RESOURCE_PED2]]
+        [[[environment]]]
+            {% set ATMOS_NODES_PED2 = ((UM_ATM_NPROC_PED2*OMPTHR_ATM)/(APPN*HYPERTHREADS))|round(0,"ceil")|int %}
+            {% set ATMO_PPNU_PED2   = (UM_ATM_NPROC_PED2/ATMOS_NODES_PED2/2)|round(0,'ceil')|int %}
+            ROSE_LAUNCHER_PREOPTS_UM = -n {{UM_ATM_NPROC_PED2}} -N {{2*ATMO_PPNU_PED2}} -S {{ATMO_PPNU_PED2}} -d {{OMPTHR_ATM}} -j {{HYPERTHREADS}} env OMP_NUM_THREADS={{OMPTHR_ATM}} env HYPERTHREADS={{HYPERTHREADS}}
+
+{% set NEMO_NPROC_PED = NEMO_IPROC_PED * NEMO_JPROC_PED %}
+    [[NEMO_RESOURCE_PED]]
+         [[[environment]]]
+            {% set OCEAN_NODES_PED = (NEMO_NPROC_PED*OMPTHR_OCN/(OPPN*OHYPERTHREADS))|round(0,"ceil")|int %}
+            {% set OCEAN_PPNU_PED =(NEMO_NPROC_PED/OCEAN_NODES_PED/2)|round(0,'ceil')|int %}
+            ROSE_LAUNCHER_PREOPTS_NEMO = -n {{NEMO_NPROC_PED}} -N {{2*OCEAN_PPNU_PED}} -S {{OCEAN_PPNU_PED}} -d {{OMPTHR_OCN}} -j {{OHYPERTHREADS}} env OMP_NUM_THREADS={{OMPTHR_OCN}} env HYPERTHREADS={{OHYPERTHREADS}}
+            {% if XIOS_NPROC is defined and XIOS_NPROC > 0 %}
+              {% set XIOS_NPROC = XIOS_NPROC if XIOS_NPROC is defined else 0 %}
+              {% set XIOS_NODES = (XIOS_NPROC/XPPN)|round(0,'ceil')|int %}
+              {% set XIOS_PPNU = (XIOS_NPROC/XIOS_NODES/2)|round(0,'ceil')|int %}
+              ROSE_LAUNCHER_PREOPTS_XIOS  = -ss -n {{XIOS_NPROC}} -N {{2*XIOS_PPNU}} -S {{XIOS_PPNU}} -d 1 -j 1 env OMP_NUM_THREADS=1 env HYPERTHREADS=1
+            {% endif %}
+
+    [[COUPLE_RESOURCE_PED1]]
+          inherit = COUPLE_RESOURCE
+         [[[directives]]]
+            -l select = {{ATMOS_NODES_PED1 + OCEAN_NODES_PED + (XIOS_NODES if XIOS_NODES is defined else 0)}}:subproject={{SUBPROJECT_OTHER if SUBPROJECT == 'other' else SUBPROJECT}}:funding={{FUNDING_OTHER if FUNDING == 'other' else FUNDING}}:coretype={{CORE}}
+        
+    [[COUPLE_RESOURCE_PED2]]
+          inherit = COUPLE_RESOURCE
+         [[[directives]]]
+            -l select = {{ATMOS_NODES_PED2 + OCEAN_NODES_PED + (XIOS_NODES if XIOS_NODES is defined else 0)}}:subproject={{SUBPROJECT_OTHER if SUBPROJECT == 'other' else SUBPROJECT}}:funding={{FUNDING_OTHER if FUNDING == 'other' else FUNDING}}:coretype={{CORE}}
+
+{% endif %}
+        

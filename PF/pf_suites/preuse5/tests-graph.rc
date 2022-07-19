@@ -1,0 +1,155 @@
+{% if TEST_RESTART %}
+        [[[R1]]]
+            graph = """
+                {{ 'fcm_make_ocean => fcm_make2_ocean' + (' => recon' if RECON else ' => coupled_crun & coupled_lrun' if RUN else '') if BUILD_OCEAN else '' }}                             
+                {{ 'fcm_make_um ' + (' => recon' if RECON else ' => coupled_crun & coupled_lrun' if RUN else '') if BUILD_UM else '' }}
+                {{ 'clearout' + (' => coupled_crun & coupled_lrun' if RUN else '') if CLEAROUT else '' }}
+                {{ 'recon' + (' => coupled_crun & coupled_lrun' if RUN else '') if RECON else '' }}
+                {{ 'fcm_make_drivers => fcm_make2_drivers' + (' => coupled_crun & coupled_lrun' if RUN else '') if BUILD_DRIVERS else '' }}
+
+            """        
+        
+        [[[ R4//{{CYCLE_CRUN}} ]]]
+            graph = """
+                coupled_crun [-{{CYCLE_CRUN}}]=> coupled_crun
+                coupled_crun =>nemo_rebuild_restart_crun
+            """        
+        
+        
+        [[[ R2//{{CYCLE_LRUN}} ]]]
+            graph = """
+                coupled_lrun[-{{CYCLE_LRUN}}] => coupled_lrun
+                coupled_lrun => nemo_rebuild_restart_lrun
+            """        
+            
+        [[[ R2/^+{{CYCLE_CRUN}}/{{CYCLE_LRUN}} ]]]            
+            graph = """
+                nemo_rebuild_restart_lrun[-{{CYCLE_CRUN}}] => rose_ana_lrun_crun
+                nemo_rebuild_restart_crun => rose_ana_lrun_crun 
+{% if CHECK_RESTART_DIAGNOSTICS %}            
+                nemo_rebuild_restart_crun => rose_ana_diag_lrun_crun 
+                nemo_rebuild_restart_lrun[-{{CYCLE_CRUN}}] => rose_ana_diag_lrun_crun
+{% endif %}                               
+            """
+            
+{% if HOUSEKEEP %}
+        [[[ R1/^+{{CYCLE_CRUN}}+{{CYCLE_LRUN}} ]]]            
+            graph = """
+                rose_ana_lrun_crun => housekeeping_restart_share
+                rose_ana_lrun_crun => housekeeping_restart_work
+                rose_ana_lrun_crun => housekeeping_restart_work_first
+{% if CHECK_RESTART_DIAGNOSTICS %}            
+                rose_ana_diag_lrun_crun => housekeeping_restart_share
+                rose_ana_diag_lrun_crun => housekeeping_restart_work
+                rose_ana_diag_lrun_crun => housekeeping_restart_work_first
+{% endif %}                
+                """
+{% endif %}
+                
+{% if TEST_KGO %}
+        [[[R1]]]
+        graph = """
+                coupled_lrun => rose_ana_kgo
+                """
+{% endif %}               
+            
+
+{% if TEST_NRUN_NRUN %}
+        [[[R1]]]
+            graph = """
+                {{ 'fcm_make_ocean => fcm_make2_ocean' + (' => recon' if RECON else ' => coupled_nrun ' if RUN else '') if BUILD_OCEAN else '' }}                             
+                {{ 'fcm_make_um ' + (' => recon' if RECON else ' => coupled_nrun ' if RUN else '') if BUILD_UM else '' }}
+                {{ 'clearout' + (' => coupled_nrun ' if RUN else '') if CLEAROUT else '' }}
+                {{ 'recon' + (' => coupled_nrun ' if RUN else '') if RECON else '' }}
+                {{ 'fcm_make_drivers => fcm_make2_drivers' + (' => coupled_nrun ' if RUN else '') if BUILD_DRIVERS else '' }}
+
+            """        
+        [[[ R4//{{CYCLE_NRUN}} ]]]
+            graph = """
+                coupled_nrun => nemo_rebuild_restart_nrun
+                nemo_rebuild_restart_nrun [-{{CYCLE_NRUN}}]=> coupled_nrun
+            """        
+            
+        [[[ R2/^+{{CYCLE_NRUN}}/{{CYCLE_LRUN}} ]]]            
+            graph = """
+                nemo_rebuild_restart_lrun[-{{CYCLE_NRUN}}] => rose_ana_lrun_nrun
+                nemo_rebuild_restart_nrun => rose_ana_lrun_nrun 
+{% if CHECK_RESTART_DIAGNOSTICS %}
+                nemo_rebuild_restart_nrun => rose_ana_diag_lrun_nrun 
+                nemo_rebuild_restart_lrun[-{{CYCLE_NRUN}}] => rose_ana_diag_lrun_nrun
+{% endif %}                
+            """
+        
+{% if HOUSEKEEP %}
+        [[[ R1/^+{{CYCLE_NRUN}}+{{CYCLE_LRUN}} ]]]            
+            graph = """
+                rose_ana_lrun_nrun => housekeeping_restart_share
+                rose_ana_lrun_nrun => housekeeping_restart_work
+                rose_ana_lrun_nrun => housekeeping_restart_work_first
+{% if CHECK_RESTART_DIAGNOSTICS %}
+                rose_ana_diag_lrun_nrun => housekeeping_restart_share
+                rose_ana_diag_lrun_nrun => housekeeping_restart_work
+                rose_ana_diag_lrun_nrun => housekeeping_restart_work_first
+
+{% endif %}                
+                """
+{% endif %}
+            
+{% endif %}
+
+{% endif %}
+
+{% if TEST_RIGOROUS_COMPILE %}
+        [[[R1]]]
+            graph = """
+                {{ 'fcm_make_ocean_rigorous => fcm_make2_ocean_rigorous' + (' => recon_rigorous' if RECON else ' => coupled_rigorous ' if RUN else '') if BUILD_OCEAN else '' }}                             
+                {{ 'fcm_make_um_rigorous ' + (' => recon_rigorous' if RECON else ' => coupled_rigorous' if RUN else '') if BUILD_UM else '' }}
+                {{ 'clearout' + (' => coupled_rigorous' if RUN else '') if CLEAROUT else '' }}
+                {{ 'recon_rigorous' + (' => coupled_rigorous' if RUN else '') if RECON else '' }}
+                {{ 'fcm_make_drivers => fcm_make2_drivers' + (' => coupled_rigorous' if RUN else '') if BUILD_DRIVERS else '' }}
+                {{ 'install_ancil => recon_rigorous ' if RECON else ('install_ancil => coupled_rigorous' if RUN else '')}}                
+
+            """        
+
+        [[[ R2//{{CYCLE_RIG}} ]]]
+            graph = """
+                coupled_rigorous[-{{CYCLE_RIG}}] => coupled_rigorous
+            """        
+
+        [[[ R2//{{CYCLE_RIG}} ]]]
+            graph = """
+                coupled_rigorous[-{{CYCLE_RIG}}] => coupled_rigorous
+            """        
+            
+{% if HOUSEKEEP %}
+        [[[ R1/^+{{CYCLE_RIG}}]]]               
+            graph= """
+                coupled_rigorous => housekeeping_rigorous
+            """
+{% endif %}
+        
+{% endif %}
+
+
+
+{% if TEST_PE_DECOMP %}
+
+{% set NEMO_NPROC_PED = NEMO_IPROC_PED * NEMO_JPROC_PED %}
+{% set PED_OCN = '%sx%s' % (NEMO_IPROC_PED, NEMO_JPROC_PED) %}
+{% set COUPLED_PED1 = 'coupled_a%sx%s_o%s' % (ATM_PROCX_PED1, ATM_PROCY_PED1, PED_OCN) %}
+{% set COUPLED_PED2 = 'coupled_a%sx%s_o%s' % (ATM_PROCX_PED2, ATM_PROCY_PED2, PED_OCN) %}
+
+        [[[R1]]]
+        graph = """
+                fcm_make_ocean_{{PED_OCN}} => fcm_make2_ocean_{{PED_OCN}} => {{COUPLED_PED1}} => nemo_rebuild_restart_1 => rose_ana_pe_decomp
+                fcm_make_ocean_{{PED_OCN}} => fcm_make2_ocean_{{PED_OCN}} => {{COUPLED_PED2}} => nemo_rebuild_restart_2 => rose_ana_pe_decomp
+                {{ 'fcm_make_um ' + (' => recon' if RECON else (' => ' + COUPLED_PED1 + ' & ' + COUPLED_PED2) if RUN else '') if BUILD_UM else '' }}
+                {{ 'recon' + ((' => ' + COUPLED_PED1 + ' & ' + COUPLED_PED2) if RUN else '') if RECON else '' }}
+                {{ 'clearout' + ((' => ' + COUPLED_PED1 + ' & ' + COUPLED_PED2) if RUN else '') if CLEAROUT else '' }}
+                {{ 'fcm_make_drivers => fcm_make2_drivers' + ((' => ' + COUPLED_PED1 + ' & ' + COUPLED_PED2) if RUN else '') if BUILD_DRIVERS else '' }}
+{% if HOUSEKEEP %}
+                rose_ana_pe_decomp => housekeeping_ped
+{% endif %}
+                """
+{% endif %}
+

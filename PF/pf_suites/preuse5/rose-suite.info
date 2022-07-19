@@ -1,0 +1,12 @@
+description=Copy of u-ck651/trunk@214829
+info=THIS IS THE 1.0 RELEASE OF UKESM1.
+    =It is a fully coupled configuration which has been set up
+    =for a pre-industrial control experiment; an alternative
+    =suite (originally named u-bc613) with settings for a
+    =historical experiment is also available.
+    =
+    =For more information about this release, please see
+    =http://cms.ncas.ac.uk/wiki/UM/Configurations/UKESM/RelNotes1.0
+owner=mikemineter
+project=UKESM
+title=UKESM1.1 GLOSAT historical member #1, UM11.7.

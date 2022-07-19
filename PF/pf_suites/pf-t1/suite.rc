@@ -1,0 +1,202 @@
+#!jinja2
+[cylc]
+    UTC mode = True 
+    # Timeout handlers
+    [[events]]
+        timeout = P1D
+
+[scheduling]
+    initial cycle point = now
+
+    [[dependencies]]
+        [[[R1]]]
+             graph = startpf => startclones
+        [[[PT30M]]]
+             graph = sendreq[-PT30M] => getreq => sendreq 
+        
+[runtime]
+# Root, inherited by everything
+    [[root]]
+        init-script = """
+export CYLC_VERSION={{CYLC_VERSION}}
+export ROSE_VERSION={{ROSE_VERSION}}
+"""
+        script = "rose task-run --verbose"
+        [[[events]]]
+            # Cylc has sensible defaults for event notification- only add
+            # to the entry below if you want to be notified by mail
+            mail events = submission failed, submission timeout, submission retry, retry, failed, timeout
+            submission timeout = P1D # 1 day
+        [[[environment]]]
+            ROSE_ORIG_HOST={{ ROSE_ORIG_HOST }}
+            RUNS = unset
+     [[HPC_ALL]] 
+        [[[directives]]]
+            --export = none
+            --account = {{ HPC_ACCOUNT }}
+        [[[job]]]
+            batch system = slurm
+        [[[remote]]]
+            host = {{ HPC_HOST }}
+            owner = {{ HPC_USER }}
+
+     [[HPC_SERIAL]]
+        inherit = None, HPC_ALL
+        [[[environment]]]
+            ROSE_TASK_N_JOBS = 1
+        [[[job]]]
+            execution time limit = PT20M
+        [[[directives]]]
+            --partition=serial
+            --qos=serial
+            --ntasks=1
+            --nodes = 1
+            --cpus-per-task = 1
+            --mem=4G
+
+    [[LINUX]]
+        [[[remote]]]
+            host = {{ ROSE_ORIG_HOST }}
+        [[[job]]]
+            batch system = background
+
+    [[startpf]]
+        inherit = HPC_SERIAL
+        script = """
+                 . {{OPT_SETUP_A2}}
+                 if [[ -d  {{PF_ENS_DIR}} ]]
+                 then 
+                   mv {{PF_ENS_DIR}} {{PF_ENS_DIR}}"_Old"
+                 fi
+                 mkdir -p {{PF_ENS_DIR}}
+                 for i in {1..{{PF_ENSEMBLE_SIZE}}}
+                 do
+                    pfstudy={{PF_ENS_PREFIX}}$(printf "%03d" $i)
+                    rundir={{PF_ENS_DIR}}/${pfstudy}
+                    mkdir $rundir
+                          # start the suite for this run.
+                          # never trying to do more runs than we have quota/queue space for.
+                          # how does user perturb runs - prerun task in model suite.
+                          # in optclim we had to wait to know wht runs are needed - here 
+                          # its simpler - just kn ow hte ensemble size so start them then
+                          # wait for their completion and readiness for continuation run.
+
+                    {{PF_START_RUN}} -b {{PF_BASE_SUITE}} -D {{PF_ENS_DIR}} -r ${pfstudy} 
+     
+                 done
+                 echo ls -r {{PF_ENS_DIR}}
+                 ls -r {{PF_ENS_DIR}}
+
+
+                 
+
+        """
+        [[[job]]]
+            execution time limit = PT20M
+
+        [[[environment]]]
+            ROSE_TASK_APP    = startpf
+            PREBUILD =
+            ROSE_TASK_N_JOBS = 1
+            ROSE_TASK_OPTIONS = --ignore-lock
+    [[sendreq]]
+        inherit = HPC_SERIAL
+        script = """
+                 hostname
+                 . {{OPT_SETUP_A2}}
+                 . {{GEOSM_SETUP_A2}}
+                         # scan run directories to find runs needing a cloned base suite
+                 if [[ -d {{PF_ENS_DIR}} ]]
+                 then
+                     A2R=$({{OPT_GET_RUNS}} {{PF_ENS_DIR}})
+                     echo A2R: $A2R
+                     if [[ x${A2R} != x ]] 
+                     then
+                           for ia in ${A2R}
+                           do
+                              PF_STUDY=$(basename {{PF_ENS_DIR}})
+
+                              echo {{OPT_SEND_RUNS}} -b {{OPT_BASE_SUITE}} -D {{PF_ENS_DIR}} -s {{PF_STUDY}} -r ${ia}
+                              {{OPT_SEND_RUNS}} -b {{OPT_BASE_SUITE}} -D {{PF_ENS_DIR}} -s {{PF_STUDY}} -r ${ia} 
+                              touch {{OPT_STUDY_DIR}}/${ia}/state".QUEUED"
+                           done
+                     else
+                      echo null in A2R
+                     fi
+                 else
+                     echo no study dir yet  {{PF_STUDY}}
+                 fi # may be called before stdydir ecsts,.
+
+        """
+        [[[job]]]
+            execution time limit = PT20M
+
+        [[[environment]]]
+            ROSE_TASK_APP    = sendreq
+            PREBUILD =
+            ROSE_TASK_N_JOBS = 1
+            ROSE_TASK_OPTIONS = --ignore-lock
+
+    [[startclones]]
+        inherit = LINUX
+        script = """
+                 . {{GEOSM_SETUP_PUMA}}
+                 for i in {1..{{PF_ENSEMBLE_SIZE}}}
+                 do
+                    new_suite={{PF_ENS_PREFIX}}$(printf "%03d" $i)
+                    rundir={{PF_ENS_DIR}}/${new_suite}   # archer2 directory for the run
+                          # start the suite for this run.
+                          # never trying to do more runs than we have quota/queue space for.
+                          # how does user perturb runs - prerun task in model suite.
+                          # in optclim we had to wait to know wht runs are needed - here 
+                          # its simpler - just kn ow hte ensemble size so start them then
+                          # wait for their completion and readiness for continuation run.
+
+                    cd /home/$USER/roses
+
+                    if [[ -d $new_suite ]]
+                    then
+          # force uniqueness - might be unnecessary - consider later!
+          # $$ is hte process number of this process. Could use _1,_2 etc
+
+                            new_suite=${new_suite}_$$
+                    fi 
+                    cp -r $PF_BASE_SUITE  $new_suite
+                    cd $new_suite
+
+                    cp rose-suite.conf orig-rose-suite.conf
+                    sed -i -e "s/xxxx/${rundir}/g" rose-suite.conf
+
+                    echo in new suite $new_suite made following differences:
+                    diff orig-rose-suite.conf rose-suite.conf
+               
+                     rose suite-run --no-gcontrol
+
+                     cd /home/$USER/roses
+ 
+                 done
+        """
+        [[[job]]]
+            execution time limit = PT20M
+
+        [[[environment]]]
+            ROSE_TASK_APP    = getreq
+            PREBUILD =
+            ROSE_TASK_N_JOBS = 1
+            ROSE_TASK_OPTIONS = --ignore-lock
+    [[getreq]]
+        inherit = LINUX
+        script = """
+                 . {{GEOSM_SETUP_PUMA}}
+                 PF_STUDY=$(basename {{PF_ENS_DIR}})
+                 {{OPT_PUMA_RECV_AND_CLONE}} -s {{PF_STUDY}} -C /home/mjm/geosmeta.cfg
+        """
+        [[[job]]]
+            execution time limit = PT20M
+
+        [[[environment]]]
+            ROSE_TASK_APP    = getreq
+            PREBUILD =
+            ROSE_TASK_N_JOBS = 1
+            ROSE_TASK_OPTIONS = --ignore-lock
+

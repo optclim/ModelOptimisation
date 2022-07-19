@@ -1,0 +1,303 @@
+{# There are 8 (128/16) NUMA regions per node #}
+{% set NUMA = 8 %}
+{% set PPN = 128 %}
+{% set APPN = ATM_PPN if ATM_PPN is defined else PPN %}
+{% set OPPN = OCN_PPN if OCN_PPN is defined else PPN %}
+{% if XIOS_NPROC is defined and XIOS_NPROC > 0 %}
+  {% set XPPN = XCPU if (XCPU is defined) else PPN %}
+{% endif %}
+
+{% set RCF_TASKS = RCF_PROCX*RCF_PROCY %}
+{% set RCF_NODES = ((RCF_TASKS/APPN) | round(0,'ceil') | int) %}
+
+{% set ATMOS_TASKS = (ATM_PROCX*ATM_PROCY+(IOS_NPROC if IOS_NPROC is defined else 0)) %}
+{% set ATMOS_NODES = ((ATMOS_TASKS*OMPTHR_ATM)/(APPN*HYPERTHREADS))|round(0,"ceil")|int %}
+{% set ATMOS_PPNU  = (ATMOS_TASKS/ATMOS_NODES/NUMA)|round(0,'ceil')|int %}
+
+{% set OCEAN_TASKS = NEMO_NPROC %}
+{% set OCEAN_NODES = (OCEAN_TASKS*OMPTHR_OCN/(OPPN*OHYPERTHREADS))|round(0,"ceil")|int %}
+{% set OCEAN_PPNU =(OCEAN_TASKS/OCEAN_NODES/NUMA)|round(0,'ceil')|int %}
+
+{% set TOTAL_NODES = ATMOS_NODES+OCEAN_NODES %}
+
+{% if XIOS_NPROC is defined and XIOS_NPROC > 0 %}
+  {% set XIOS_TASKS = XIOS_NPROC if XIOS_NPROC is defined else 0 %}
+  {% set XIOS_NODES = (XIOS_TASKS/XPPN)|round(0,'ceil')|int %}
+  {% set XIOS_PPNU = (XIOS_TASKS/XIOS_NODES/NUMA)|round(0,'ceil')|int %}
+
+  {% set TOTAL_NODES = TOTAL_NODES+XIOS_NODES %}
+{% endif %}
+
+{# ********** INHERITED NAMESPACES *************** #}
+
+   [[NCAS_NOT_SUPPORTED]]
+        script = """
+            echo 'Task not supported at NCAS' >&2
+            false
+        """
+        [[[job]]]
+            batch system = background
+
+    # Used to state the build configuration for the UM, where CONFIG is the
+    # fcm-make profile to use, OPTIM is the optimisation level (usually one
+    # of high, safe, debug or rigourous), PREBUILD is the full path of the
+    # prebuilt UM code for the CONFIG and OPTIM settings. Must be left
+    # blank if not using prebuilds.
+    #
+    # Where used: fcm_make_um, fcm_make2_um
+    #
+    [[UMBUILD]]
+        [[[environment]]]
+            CONFIG = ncas-ex-cce
+            ROSE_TASK_N_JOBS = 6
+#            ROSE_APP_OPT_CONF_KEYS = archer2
+#            OPTIM = safe
+#            PREBUILD =
+
+    [[HPC]]
+        {% if USE_MODULES == 'central' %}
+          {% set MODULE_CMD = 'module load ' + CONFIG_MODULE_NAME + ';' %}
+        {% elif USE_MODULES == 'custom' %}
+          {% set MODULE_CMD = 'module use ' + MOCI_MODULE_PATH + '; module load ' + CONFIG_MODULE_NAME + ';'  %}
+        {% elif USE_MODULES == 'none' %}
+          {% set MODULE_CMD = 'export xios_path=' + xios_path + '; export prism_path=' + prism_path + ';' %}
+        {% endif %}
+        pre-script = """
+                     module load cce/12.0.3
+                     module swap craype-network-ofi craype-network-ucx
+                     module swap cray-mpich cray-mpich-ucx
+                     {{MODULE_CMD}}
+                     module load atp
+                     module list 2>&1
+                     unset OMP_NUM_THREADS
+                     """
+        [[[job]]]
+            submission retry delays = 3*PT5M,3*PT30M,3*PT3H
+            batch system = slurm
+        [[[directives]]]
+            --chdir=/work/n02/n02/{{ARCHER2_USERNAME}}
+            --partition=standard
+            --qos={{ARCHER2_QUEUE}}
+            --account={{ARCHER2_GROUP}}
+            --export=none
+        [[[environment]]]
+            BASIS_YR = $(rose date --print-format='%Y' {{CYCLE_INIT}})
+            PLATFORM = cce
+            UMDIR = /work/y07/shared/umshared
+            UM_INSTALL_DIR = /work/y07/shared/umshared
+            CMIP6_ANCILS = $UMDIR/cmip6/ancils
+            OCEANDIR = $UMDIR
+        [[[remote]]]
+            host = login.archer2.ac.uk
+            owner = {{ARCHER2_USERNAME}}
+            
+    [[HPC_SERIAL]]
+        inherit = None, HPC
+        [[[environment]]]
+            ROSE_TASK_N_JOBS = 1
+        [[[job]]]
+            execution time limit = PT30M
+        [[[directives]]]
+            --partition=serial
+            --qos=serial
+            --ntasks=1
+
+{# ************ RESOURCES ************* #}
+
+    # Used to state resources required for extracting code from (mirrored)
+    # MOSRS repositories.
+    #
+    # Where used: fcm_make_um, fcm_make_pp
+    #
+    [[EXTRACT_RESOURCE]]
+        #script = "rose task-run --verbose --define=fast-dest-root-orig=$SCRATCH --define='args=--archive --ignore-lock'"
+        [[[job]]]
+            batch system = background
+        [[[remote]]]
+            host = $(rose host-select {{ EXTRACT_HOST }}) 
+
+    # The resources used for building the UM code.
+    #
+    # Where used: fcm_make2_um
+    #
+    [[UMBUILD_RESOURCE]]
+        inherit = None, HPC_SERIAL
+        [[[environment]]]
+            ROSE_TASK_N_JOBS  = 6
+        [[[directives]]]
+            --ntasks=6
+
+    [[OCEANBUILD]]
+        inherit = EXTRACT_RESOURCE
+
+    [[OCEANBUILD_RESOURCE]]
+        inherit = HPC_SERIAL
+        [[[environment]]]
+            ROSE_TASK_N_JOBS  = 6
+        [[[directives]]]
+            --ntasks=6
+
+    [[DRIVERS_BUILD_RESOURCE]]
+        inherit = HPC_SERIAL       
+        
+    [[PLOT_LOADBALANCE_RESOURCE]]
+        inherit = HPC_SERIAL
+        pre-script = "module load cray-python"
+
+    [[TEST_CPMIP_NORMS_RESOURCE]]
+        inherit = HPC_SERIAL
+
+    # The resources used for building the postproc code.
+    #
+    # Where used: fcm_make2_pp
+    #
+    [[PPBUILD_RESOURCE]]
+        inherit = HPC_SERIAL
+
+    # The resources used for obtaining the ancil_versions file appropriate
+    # to the resolution. This needs to access fcm:ancil.xm and to place the
+    # ancil in $ROSE_DATA/etc on the machine which runs the UM.
+    #
+    # Where used: install_ancil
+    #
+    [[INSTALL_ANCIL_RESOURCE]]
+        inherit = HPC_SERIAL
+        [[[job]]]
+            execution time limit = PT1M
+            
+    # The resources used to run the clearout scripts
+    #
+    # Where used: clearout
+    #
+    [[CLEAROUT_RESOURCE]]
+        inherit = HPC_SERIAL
+        [[[job]]]
+            execution time limit = PT10M
+
+    # The resources used to run reconfiguration.
+    #
+    # Where used: recon
+    #
+    [[RCF_RESOURCE]]
+        inherit = UMBUILD, HPC
+        [[[environment]]]
+            ROSE_LAUNCHER = srun
+            ROSE_APP_OPT_CONF_KEYS = {{UM_OPT_KEYS}}
+            ROSE_LAUNCHER_PREOPTS = --cpu-bind=cores
+        [[[directives]]]
+            --nodes={{RCF_NODES}}
+            --ntasks= {{RCF_TASKS}}
+            --tasks-per-node={{APPN}}
+            --cpus-per-task=1
+
+        [[[job]]]
+            execution time limit = PT20M
+
+    # The resources used to run the UM forecast. 
+    #
+    # Where used: coupled
+    #      
+    [[UM_RESOURCE]]
+       [[[environment]]]
+            {% if OMPTHR_ATM > 1 %}
+              ROSE_LAUNCHER_PREOPTS_UM  = --het-group=0 --nodes={{ATMOS_NODES}} --ntasks={{ATMOS_TASKS}} --tasks-per-node={{ATMOS_PPNU*NUMA}} --cpus-per-task={{OMPTHR_ATM}} --hint=nomultithread --distribution=block:block --export=all,OMP_NUM_THREADS={{OMPTHR_ATM}},HYPERTHREADS={{HYPERTHREADS}},OMP_PLACES=cores
+            {% else %}
+              ROSE_LAUNCHER_PREOPTS_UM  = --het-group=0 --nodes={{ATMOS_NODES}} --ntasks={{ATMOS_TASKS}} --tasks-per-node={{ATMOS_PPNU*NUMA}} --cpus-per-task={{OMPTHR_ATM}} --cpu-bind=cores --export=all,OMP_NUM_THREADS={{OMPTHR_ATM}},HYPERTHREADS={{HYPERTHREADS}}
+            {% endif %}
+
+      
+    # The resources used to run the NEMO and CICEforecast.
+    #
+    # Where used: coupled, NEMO
+    #
+    [[NEMO_RESOURCE]]
+         [[[environment]]]
+            {% if OMPTHR_OCN > 1 %}
+              ROSE_LAUNCHER_PREOPTS_NEMO  = --het-group=1 --nodes={{OCEAN_NODES}} --ntasks={{OCEAN_TASKS}} --tasks-per-node={{OCEAN_PPNU*NUMA}} --cpus-per-task={{OMPTHR_OCN}} --hint=nomultithread --distribution=block:block --export=all,OMP_NUM_THREADS={{OMPTHR_OCN}},HYPERTHREADS={{HYPERTHREADS}},OMP_PLACES=cores
+            {% else %}
+              ROSE_LAUNCHER_PREOPTS_NEMO  = --het-group=1 --nodes={{OCEAN_NODES}} --ntasks={{OCEAN_TASKS}} --tasks-per-node={{OCEAN_PPNU*NUMA}} --cpus-per-task={{OMPTHR_OCN}} --cpu-bind=cores --export=all,OMP_NUM_THREADS={{OMPTHR_OCN}},HYPERTHREADS={{HYPERTHREADS}}
+            {% endif %}
+            {% if XIOS_NPROC is defined and XIOS_NPROC > 0 %}
+              ROSE_LAUNCHER_PREOPTS_XIOS  = --het-group=2 --nodes={{XIOS_NODES}} --ntasks={{XIOS_TASKS}} --tasks-per-node={{XIOS_PPNU*NUMA}} --cpus-per-task=1 --cpu-bind=cores --export=all,OMP_NUM_THREADS=1,HYPERTHREADS=1
+            {% endif %}
+
+
+    # The resources used to run the Coupled model.
+    #
+    # Where used: coupled
+    #
+    [[COUPLE_RESOURCE]]
+        inherit = HPC
+        [[[job]]]
+            {% if RETRIES > 0 %}
+              execution retry delays = {{RETRIES}}*PT3H
+            {% endif %}
+            execution time limit = PT{{'%02d' % (CLOCK[0])}}H{{'%02d' % (CLOCK[1])}}M{{'%02d' % (CLOCK[2])}}S
+        [[[environment]]]
+            ROSE_LAUNCHER = srun
+            COUPLED_PLATFORM = XC40
+            PPN = {{PPN}}
+            {% if IOS_NPROC > 0 %}
+              MPICH_MAX_THREAD_SAFETY=multiple
+              MPICH_NEMESIS_ASYNC_PROGRESS=mc
+            {% else %}
+              MPICH_COLL_SYNC=MPI_Gatherv
+            {% endif %}
+            MPICH_GNI_ROUTING_MODE=ADAPTIVE_2
+            OMP_STACKSIZE=2G
+        [[[directives]]]
+            --nodes={{TOTAL_NODES}}
+
+
+    # The resources used to run postproc (archiving)
+    #
+    # Where used: postproc
+    #
+    [[POSTPROC_RESOURCE]]
+        inherit = HPC_SERIAL
+        pre-script = """
+                     module load postproc
+                     module list 2>&1
+                     ulimit -s unlimited
+                     """
+        [[[job]]]
+            execution retry delays = PT10M, PT1H, PT3H, P1D
+            execution time limit = PT2H
+        [[[environment]]]
+            CYCLEPERIOD = $( rose date $CYLC_TASK_CYCLE_POINT $CYLC_TASK_CYCLE_POINT --calendar {{CALENDAR}} --offset2 {{FMT}} -f y,m,d,h,M,s )
+            ROSE_APP_OPT_CONF_KEYS = archer2
+
+
+    # The resources used to run pptransfer (transfer of data from HPC to another machine)
+    #
+    # Where used: pptransfer
+    #
+    [[PPTRANSFER_RESOURCE]]
+        inherit = POSTPROC_RESOURCE
+        [[[job]]]
+            batch system = background
+
+    # The resources used to run housekeeping
+    #
+    # Where used: housekeeping
+    #
+    [[HOUSEKEEP_RESOURCE]]
+        [[[job]]]
+            batch system = background
+        [[[remote]]]
+            host = localhost
+
+    # The resources used to run init_cfc_age_dump
+    #
+    # Where used: init_cfc_age_dump
+    #
+    [[INITCFC_RESOURCE]]
+        inherit = OCEANBUILD_RESOURCE
+        pre-script = """
+                     module load postproc
+                     module list 2>&1
+                     ulimit -s unlimited
+                     """
+        [[[environment]]]
+            INIT_SRC = $UMDIR/hadgem3/initial/ocean/eORCA1v2.2x/init_zero_trc.nc
+
