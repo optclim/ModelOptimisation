@@ -26,9 +26,11 @@ DirListFile=$1  # file containing list of directories.
 JsonFile=$2  # json file
 echo "DirListFile is $DirListFile"
 echo "JsonFile is $JsonFile"
-JsonFile=$(realpath $JsonFile)
-echo "going to post process using  $JsonFile in $PWD"
+JsonFile=$(realpath "../"${JsonFile})
+echo "going to post process using  $JsonFile "
 echo pwd=$PWD
+
+
 
 # its one of an array of jobs.... find which one... allow for Eddie or Archer2 in this bit!
 # but note the #SBATCH is comment on Eddie.
