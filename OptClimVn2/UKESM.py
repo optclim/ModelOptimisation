@@ -101,11 +101,18 @@ class UKESM(ModelSimulation.ModelSimulation):
         # TODO NOTE: with UKESM we need to accept the parameters, but dont edit them here.
         # should replace all this logic
         # All we are doing is making a file runParams.json in the rundir.
-        # Gives us loose couplign of the definitions of params and their application to the model instance
+        # Gives us loose coupling of the definitions of params and their application to the model instance
         # we now have a module that does the editing of the namelists elsewhere - on reciept of the cloned suite
 
         self.simpleNamelist('iau_nontrop_max_p','iau_nl','app/um/rose-app.conf')
         self.simpleNamelist('diagcloud_qn_compregimelimit','iau_nl','app/um/rose-app.conf')
+           # above two for the initial system tests
+           # below for u-cp254 and derivative base model etc.
+
+        self.simpleNamelist('DP_CORR_STRAT','run_radiation','app/um/rose-app.conf')
+        self.simpleNamelist('TWO_D_FSD_FACTOR','run_radiation','app/um/rose-app.conf')
+        self.simpleNamelist('ENT_FAC_DP','run_convection','app/um/rose-app.conf')
+        self.simpleNamelist('AI','run_precip','app/um/rose-app.conf')
 
         # got some parameters and either creating or updating -- update namelist.
         if len(parameters) > 0 and (create or update):
@@ -260,7 +267,8 @@ class UKESM(ModelSimulation.ModelSimulation):
              #UKESM gets the model files via PUMATEST. This requires
              # Loose coupling to a task that can edit he suite's files.
              # so build a simple dictionary that links paramters names and 
-             # includes any expansion of metapaaramters from a few lines above.
+             # NOTE - metaparameters are expandedi later in the new module
+             # not here. 
 
         testlooseDict={}
         for ifile in files.keys():  # iterate over files
@@ -287,7 +295,7 @@ class UKESM(ModelSimulation.ModelSimulation):
 
           # create a status file
 
-          # the polling task that ocmmunicates to PUMA looks for these files
+          # the polling task that communicates to PUMA looks for these files
 
         flagFile=os.path.join(self.dirPath, "state")
         fflag=open(flagFile,mode='w')
