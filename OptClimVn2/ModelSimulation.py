@@ -126,11 +126,13 @@ class ModelSimulation(object):
 
         postProcessFile = ppOutputFile
         if postProcessFile is None:
-            postProcessFile = 'observations.nc'
+            postProcessFile = 'observations.nc' # TODO -- this not actuall used
         # verify not got create and update both set
         if create and update:
             raise Exception("Don't specify create and update")
-        # create new model Simulation ?
+        # create new model Simulation
+        # TODO move this outside  object creation. Which implies some changes to rest of system.
+
         if create:
             self.createModelSimulation(parameters=parameters, ppExePath=ppExePath, obsNames=obsNames, name=name,
                                        ppOutputFile=ppOutputFile, refDirPath=refDirPath, verbose=verbose)
@@ -939,10 +941,11 @@ class ModelSimulation(object):
 
     def submit(self, runStatus=None):
         """
-        Provides full path to submit script.
-        :param runStatus (default None)-- If 'start' return path to new submit script (defined in self.SubmitFile)
-                                      If 'continue' return path to continuation submit script (defined in self.SubmitFile)
+        Provides full path to submit script AND makes it executable if it exists.
+        :param runStatus -- If 'start' return path to new submit script 
+                            If 'continue' return path to continuation submit script (defined in self.SubmitFile)
                             If None then use value from runStatus method to chose.
+         new submit and continue submit are both defined in self.SubmitFile
         :return: path to appropriate submit script that should be ran to submit the model
         """
 
@@ -951,13 +954,17 @@ class ModelSimulation(object):
         else:
             newSubmit = runStatus
         script = pathlib.Path(self.dirPath)/self.SubmitFiles[newSubmit]
+        # if it exists make it executable.
+        if script.exists():
+            mode=script.stat().st_mode | stat.S_IXUSR
+            script.chmod(mode)
 
         return script
 
     def createPostProcessFile(self, postProcessCmd):
 
         """
-        Used by the submission system to allow teh post-processing job to be submitted when the simulation
+        Used by the submission system to allow the post-processing job to be submitted when the simulation
         has completed. As needs to be implemented for each model  this abstract version just raises an
         NotImplementedError with message to create version for your model.
 

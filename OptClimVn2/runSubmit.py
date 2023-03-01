@@ -99,10 +99,15 @@ class runSubmit(Submit.ModelSubmit):
 
         # column names affected by transform so use that if provided
         if transform is not None:
+            if len(transform.index) == 0:
+                print("Transform is \n", transform)
+                raise ValueError("Transform has 0 len index. Fix your covariance. Exiting")
             obsNames = transform.index
         else:
             obsNames = self.obsNames()
         nObs = len(obsNames)  # How many observations are we expecting?
+        if nObs == 0:# Got zero. Something gone wrong
+            raise ValueError("No observations found. Check your configuration file ")
         # result = np.full((nsim, nObs), np.nan)  # array of np.nan for result
         result = []  # empty list. Will fill with series from analysis and then make into a dataframe.
         nEns = self.config.ensembleSize()  # how many ensemble members do we want to run.
@@ -134,9 +139,12 @@ class runSubmit(Submit.ModelSubmit):
                     obs = empty.rename(ensembleMember).rename(f'missing{missCount}')
                     missCount += 1
                 ensObs.append(obs)
+            # end of loop over ensemble members.
             ensObs = pd.DataFrame(ensObs)
             # compute ensemble-mean if needed
             if ensObs.shape[0] > 1:
+                if verbose:
+                    print("Computing ensemble average")
                 ensObs = ensObs.mean(axis=0)
             else:
                 ensObs = ensObs.iloc[0, :]  # 1 row so extract the series...
@@ -359,7 +367,7 @@ class runSubmit(Submit.ModelSubmit):
         # update the user parameters from the configuration.
         userParams = configData.DFOLS_userParams(userParams=userParams)
         tMat = configData.transMatrix(scale=scale)  # scaling on transform matrix and in optfn  needs to be the same.
-        optFn = self.genOptFunction(transform=tMat, residual=True, raiseError=False, scale=scale)
+        optFn = self.genOptFunction(transform=tMat, residual=True, raiseError=False, scale=scale,verbose=False)
 
         try:
             with warnings.catch_warnings():  # catch the complaints from DFOLS about NaNs encountered..
@@ -400,7 +408,7 @@ class runSubmit(Submit.ModelSubmit):
         print(f"DFOLS completed: Solution status: {solution.msg}")
         return finalConfig
 
-    def runGaussNewton(self, verbose=None, scale=True):
+    def runGaussNewton(self, verbose=False, scale=True):
         """
 
         param: verbose if True produce more verbose output.
@@ -421,7 +429,7 @@ class runSubmit(Submit.ModelSubmit):
 
         """
         import Optimise
-        warnings.warn("No testing done for Gauss-Newton")
+
         # extract internal covariance and transform it.
         configData = self.config
         optimise = configData.optimise().copy()  # get optimisation info
@@ -434,9 +442,7 @@ class runSubmit(Submit.ModelSubmit):
         optimise['sigma'] = False  # wrapped optimisation into cost function.
         optimise['deterministicPerturb'] = True  # deterministic perturbations.
         paramNames = configData.paramNames()
-        obsNames = configData.obsNames()
-        nObs = tMat.shape[
-            0]  # might be a smaller because some evals in the covariance matrix are close to zero (or -ve)
+        nObs = tMat.shape[0]  # might be a smaller because some evals in the covariance matrix are close to zero (or -ve)
         start = configData.beginParam()
         optFn = self.genOptFunction(transform=tMat, scale=scale, verbose=verbose, residual=True)
         best, status, info = Optimise.gaussNewton(optFn, start.values,
@@ -446,6 +452,7 @@ class runSubmit(Submit.ModelSubmit):
                                                   cov=np.identity(nObs), cov_iv=intCov, trace=verbose)
 
         finalConfig = self.runCost(self.config, scale=scale)
+        finalConfig.GNstatus(status)
         finalConfig = self.runConfig(finalConfig)  # get final runInfo
         # Store the GN specific stuff. TODO consider removing these and just store the info.
         finalConfig.GNparams(info['bestParams'])
@@ -462,6 +469,7 @@ class runSubmit(Submit.ModelSubmit):
         best = pd.Series(best, index=finalConfig.paramNames(),
                          name=finalConfig.name())  # wrap best result as pandas series
         finalConfig.optimumParams(**(best.to_dict()))  # write the optimum params
+        print("status",status)
 
         return finalConfig
 

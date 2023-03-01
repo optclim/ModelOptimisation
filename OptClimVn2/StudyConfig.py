@@ -15,7 +15,7 @@ Provides classes and methods suitable for manipulating study configurations.  In
 
 
 """
-import collections  # TODO remove as collections no longer needed as dict are ordered from 3.7+
+
 import copy
 import datetime
 import json
@@ -102,9 +102,9 @@ class NumpyEncoder(json.JSONEncoder):
         """
         if isinstance(obj, np.ndarray):
             data_list = obj.tolist()
-            return collections.OrderedDict(__ndarray__=data_list, dtype=str(obj.dtype), shape=obj.shape)
+            return dict(__ndarray__=data_list, dtype=str(obj.dtype), shape=obj.shape)
         elif 'dtype' in dir(obj):
-            return collections.OrderedDict(__npdatum__=str(obj), dtype=str(obj.dtype))
+            return dict(__npdatum__=str(obj), dtype=str(obj.dtype))
         # Let the base class default method raise the TypeError
         return json.JSONEncoder(self, obj)
 
@@ -124,7 +124,7 @@ def decode(dct):
         data = dct['__npdatum__']
         return data
 
-    return collections.OrderedDict(dct)
+    return dict(dct)
 
 
 class dictFile(dict):
@@ -147,14 +147,14 @@ class dictFile(dict):
             try:
                 with path.open(mode='r') as fp:
                     if ordered:
-                        dct = json.load(fp, object_pairs_hook=collections.OrderedDict)
+                        dct = json.load(fp)#, object_pairs_hook=collections.OrderedDict)
                     else:
                         dct = json.load(fp, object_hook=decode)  ##,object_pairs_hook=collections.OrderedDict)
             except IOError:  # I/O problem
-                dct = collections.OrderedDict()
+                dct = dict()
 
         else:
-            dct = collections.OrderedDict()  # make it empty ordered dict.
+            dct = dict()  # make it empty ordered dict.
 
         self.Config = dct
         self._filename = path
@@ -309,10 +309,23 @@ class OptClimConfig(dictFile):
         if obsNames is None:
             obs = self.getv('study', {}).get('ObsList', [])[:]  # return a copy of the array.
         else:
-            self.getv('study', {})['ObsList'] = obsNames[:]  # need to copy not have a reference.
-            obs = obsNames
+            self.getv('study', {})['ObsList'] = list(obsNames)[:]  # need to copy not have a reference.
+            #TODO -- decide what to do with scales at this point
+            obs = list(obsNames)
+        
         if add_constraint and self.constraint():  # adding constraint and its defined.
-            obs.append(self.constraintName())
+            if self.constraintName() not in  obs:
+                obs.append(self.constraintName())
+
+
+
+        # check for duplicates
+        dup_obs = set([ob for ob in obs if obs.count(ob) >1])
+
+        if len(dup_obs) > 0:
+            msg="Have duplicate observations for :"+" ".join(dup_obs)
+            raise ValueError(msg)
+
         return obs
 
     def paramRanges(self, paramNames=None):
@@ -343,7 +356,7 @@ class OptClimConfig(dictFile):
         if values is not None:
             # check have Parameters and if not create it.
             if 'standardModel' not in self.Config:
-                self.Config["standardModel"] = collections.OrderedDict()  # create it as an empty ordered dict.
+                self.Config["standardModel"] = dict()  # create it as an empty ordered dict.
 
             self.Config["standardModel"]['paramValues'] = values
         else:
@@ -463,22 +476,26 @@ class OptClimConfig(dictFile):
 
     def targets(self, targets=None, obsNames=None, scale=False):
         """
-        Get (or set) the target values for specific obs names
-        :param targets -- tgt values as pandas array. Note that this does not change the obsNames which
-                                        which should be set using obsNames()
-        :param obsNames: optional list of observations to use
-        :param scale: optional if True (default is False) scale target values by scaling
+        Get (or set) the target values for specific obs names. If some obsNames not present in target then a ValueError is raised
+        :param targets -- tgt values as pandas array or None.
+         Note that this does not change the obsNames which should be set using obsNames()
+        :param obsNames: list of observations to use. If not None the self.obsNames() will be used.
+        :param scale: if True  scale target values by scaling
         :return: target values as a pandas series
         """
-        if obsNames is None:  obsNames = self.obsNames()
+        if obsNames is None:
+            obsNames = self.obsNames()
         if targets is None:
             tgt = self.getv('targets')
         else:
             tgt = targets.to_dict().copy()  # make sure we make a copy.
             self.setv('targets', tgt)
-            # and also need to set the obSNames to match but that is best done elsewhere.
-        tvalues = pd.Series([tgt.get(k, np.nan) for k in obsNames], index=obsNames)
-        if scale: tvalues = tvalues * self.scales(obsNames=obsNames)
+        missing = set(obsNames) - set(tgt.keys())
+        if len(missing):
+            raise ValueError("Missing some obs = "," ".join(missing))
+        tvalues = pd.Series({obs:tgt[obs] for obs in obsNames}) # extract the required obsNames
+        if scale:
+            tvalues = tvalues * self.scales(obsNames=obsNames)
         return tvalues.rename(self.name())
 
     def constraint(self, value=None):
@@ -488,10 +505,10 @@ class OptClimConfig(dictFile):
        
         """
         # TODO: Consider just using mu -- if it is set then use it.
-        opt = self.getv('optimise', {})  # get optimisation block
+        opt = self.optimise()  # get optimisation block
         if value is not None:  # want to set it
-            opt['sigma'] = value
-            self.setv('optimise', opt)  # store it back
+            opt = self.optimise(sigma=value)
+
 
         constraint = opt.get('sigma', False)
         return constraint
@@ -519,27 +536,42 @@ class OptClimConfig(dictFile):
         return self.targets(obsNames=[constraintName],
                             scale=scale)  # wrap name as list and use targets method to get value
 
-    def scales(self, obsNames=None):
+    def scales(self, scalings=None, obsNames=None):
         """
-        Get the scales for specified obsnamaes
-        :param obsNames: optional list of observations to use
+        Get the scales for specified obsNames
+        :param scalings If not None then set scales to these values. Should be dict like.
+            Any value of 1 will not be stored.
+        :param obsNames: list of observations to use. If None then self.obsNames will be used
         :return: scales as a pandas series
         """
+        if scalings is not None:
+            self.Config['scalings']= {key:value for key,value in scalings.items() if value != 1.0}
         scalings = self.Config.get('scalings', {})
-        if obsNames is None: obsNames = self.obsNames()
+        if obsNames is None:
+            obsNames = self.obsNames()
+        # TODO raise error if any of the scaling names are not in obsNames as a consistency check.
+        missing = {k for k in scalings.keys() if not k.endswith("comment")} - set(obsNames) # removing any keys that end with "comment"
+
+        if missing:
+            raise ValueError("Following scaling keys are not in obsNames: "+" ".join(missing))
         scales = pd.Series([scalings.get(k, 1.0) for k in obsNames], index=obsNames).rename(self.name())
         # get scalings -- if not defined set to 1.
+
         return scales
 
-    def maxFails(self):
+    def maxFails(self,value=None):
         """
+        :param value. If not None set maxFails to this.
 
-        :return: the maximum number of fails allowed. If nothign set then return 0.
+        :return: the maximum number of fails allowed. If nothing set then return 0.
         """
-        optimise = self.Config.get('optimise', {})
+        if value is None:
+            optimize = self.optimise(maxFails=value)
+        else:
+            optimise=self.optimise()
 
         maxFails = optimise.get('maxFails', 0)
-        if maxFails is None: maxFails = 0
+
         return maxFails
 
     def Covariances(self, obsNames=None, trace=False, dirRewrite=None, scale=False, constraint=None, read=False,
@@ -740,7 +772,7 @@ class OptClimConfig(dictFile):
     def readCovariances(self, covFile, obsNames=None, trace=False, dirRewrite=None):
         """
         :param covFile: Filename for the covariance matrix. Env variables and ~ expanded
-        :param olist: (optional) List of Observations wanted from covariance file
+        :param obsNames: List of Observations wanted from covariance file. If None then self.obsNames() will be used though constraint name will be omitted.
         :param trace: (optional) if set True then some handy trace info will be printed out.
         :param dirRewrite (optional) if set to something then the first key in dirRewrite that matches in covFile
               will be replaced with the element.
@@ -749,9 +781,10 @@ class OptClimConfig(dictFile):
         Returns a covariance matrix from file optionally sub-sampling to named observations.
         Note if obsName is not specified ordering will be as in the file.
         """
-
+        if obsNames is None:
+            obsNames=self.obsNames(add_constraint=False) # do not include constraint here. It gets added on later.
         use_covFile = os.path.expanduser(os.path.expandvars(covFile))
-        if dirRewrite is not None:
+        if dirRewrite is not None: #TODO consider removing this.
             use_covFile = self.rewriteDir(use_covFile, dirRewrite)
             if trace: print("use_covFile is ", use_covFile)
 
@@ -763,21 +796,18 @@ class OptClimConfig(dictFile):
             cov = pd.read_csv(use_covFile)  # read the covariance
             cov.set_index(cov.columns, drop=False, inplace=True,
                           verify_integrity=True)  # provide index
-            # verify covariance is sensible.. Should nto have any missing data
-            if cov.isnull().sum().sum() > 0:  # got some missing
-                print(f"Covariance from {use_covFile} contains missing data. Do fix")
-                print(cov)
-                raise Exception(f'cov {use_covFile} has missing data')
-
-
         except ValueError:  # now likely have index
             cov = pd.read_csv(use_covFile, index_col=0)
-        if obsNames is not None:  # deal with olist
-            cov = cov.reindex(index=obsNames, columns=obsNames)  # extract the values comparing to olist
-            expect_shape = (len(obsNames), len(obsNames))
-            if cov.shape != expect_shape:  # trigger error if missing
-                print("Sub-sampled covariance shape = ", cov.shape, "And expected = ", expect_shape)
-                raise ValueError
+
+        # verify covariance is sensible. Should not have any missing data
+        if cov.isnull().sum().sum() > 0:  # got some missing
+            raise ValueError(f'cov {use_covFile} has missing data. Do fix')
+        # check have required obsNames.
+        missing = set(obsNames) - set(cov.index)
+        if len(missing):
+            raise ValueError("Missing some obs = "," ".join(missing))
+
+        cov = cov.reindex(index=obsNames, columns=obsNames)  # extract the values comparing to olist
 
         return cov
 
@@ -822,14 +852,18 @@ class OptClimConfig(dictFile):
             modelConfigDir = os.path.expanduser(os.path.expandvars(modelConfigDir))
         return modelConfigDir
 
-    def optimise(self):
+    def optimise(self,**kwargs):
         """
         Extract and package all optimisation information into one directory
         Note this is not a copy
+        :param optimise_values -- if not None
         :return: a dict
         """
-        # TODO deal with case when optimise does not exist by creating it.
-        return self.Config['optimise']
+        optimise=self.getv('optimise',{})
+        if kwargs: # Got some values. Update the optimise dict and put them back in
+            optimise.update(kwargs)
+            self.setv('optimise',optimise)
+        return optimise
 
     def fixedParams(self):
         """
@@ -921,15 +955,19 @@ class OptClimConfig(dictFile):
         GNinfo = self.getv('GNinfo', None)
 
         if GNinfo is None:  # no GNinfo so create it.
-            GNinfo = collections.OrderedDict()
+            GNinfo = dict()
             GNinfo['comment'] = 'Gauss-Newton Algorithm information'
 
         if variable is None:
             variable = GNinfo.get(name, None)
             if variable is None: return None  # no variable so return None
-            variable = np.array(variable)  # extract variable from GNinfo and convert to numpy array
+            if isinstance(variable,list):
+                variable = np.array(variable)  # extract variable from GNinfo and convert to numpy array
         else:  # got variable so put it in the GNinfo
-            GNinfo[name] = variable.tolist()
+            try:
+                GNinfo[name] = variable.tolist()
+            except AttributeError:
+                GNinfo[name] = variable
             self.setv('GNinfo', GNinfo)  # store it.
 
         return variable
@@ -1014,6 +1052,14 @@ class OptClimConfig(dictFile):
         cost.index.rename('Iteration', inplace=True)
 
         return cost
+
+    def GNstatus(self,status=None):
+        """
+        Return and optionally set the the status of the Gauss-Newton aglorithm
+        :param status: if not None should be a string which will stored.
+        """
+        status=self.GNgetset('status',status)
+        return status
 
     def GNalpha(self, alpha=None):
         """
@@ -1354,7 +1400,7 @@ class OptClimConfig(dictFile):
         :return: the vlues as a  dataframe
         """
         BOBYQAinfo = self.getv('BOBYQA',
-                               collections.OrderedDict())  # should modify to use GNgetset but that assumes numpy array.
+                               dict())  # should modify to use GNgetset but that assumes numpy array.
         if diagnosticInfo is not None:
             BOBYQAinfo['diagnostic'] = diagnosticInfo.to_json(orient='split')
 
@@ -1587,7 +1633,7 @@ class OptClimConfigVn2(OptClimConfig):
         if values is not None:
             # check have Parameters and if not create it.
             if 'Parameters' not in self.Config:
-                self.Config['Parameters'] = collections.OrderedDict()  # create it as an empty ordered dict.
+                self.Config['Parameters'] = dict()  # create it as an empty ordered dict.
 
             self.Config['Parameters']['defaultParams'] = values
         else:
@@ -1846,6 +1892,78 @@ class OptClimConfigVn2(OptClimConfig):
         if monitorFile is not None:
             fig.savefig(str(monitorFile))  # save the figure
         return fig, (costAx, paramAx, obsAx)
+
+    def extractDoc(self):
+        """
+        Extract documentation from configuration. Done through finding any key that ends in "_comment"
+        :return: configuration with key -- the name and doc the doc string
+        """
+        def extract_doc_list(inputList,tgt_end='_comment'):
+            """
+            Ecxtract comments from list or list like things
+            :param inputList: input list
+            :param tgt_end:  what is a comment (anythoing ending in this)
+            :return: extract list.
+            """
+
+            doc=list()
+            for v in inputList:
+                if isinstance(v, dict):
+                    ddoc = extract_doc_dict(v,tgt_end=tgt_end)
+
+                    if ddoc is not None:
+                        doc.append(ddoc)
+
+                elif isinstance(v,list):
+                    ddoc = extract_doc_list(v,tgt_end=tgt_end)
+                    if ddoc is not None:
+                        doc.append(ddoc)
+
+            #breakpoint()
+            #raise NotImplementedError("No support yet for lists")
+            if len(doc)==0:
+                doc=None
+            return doc
+
+        def extract_doc_dict(inputDict,tgt_end='_comment'):
+
+            doc = dict()
+
+            for key,v in inputDict.items():
+                if isinstance(v, dict):
+                    ddoc = extract_doc_dict(v,tgt_end=tgt_end)
+                    # see if have a comment key and if so add it in with name k_doc
+                    if v.get('comment'):
+                        doc[key+"_doc"]=v.get('comment')
+                    if ddoc is not None:
+                        doc[key] = ddoc
+                elif isinstance(v,list):
+                    ddoc = extract_doc_list(v,tgt_end=tgt_end)
+                    if ddoc is not None:
+                        doc[key]=ddoc
+                elif key.endswith(tgt_end): # a comment
+                    new_key = key[0:-len(tgt_end)]
+                    doc[new_key]=v
+
+            if len(doc)==0:
+                doc=None
+
+            return doc
+
+
+        return extract_doc_dict(self.Config)
+
+    def printDoc(self,stream=None,width=120):
+        """
+        Print out documentation within a study configuration. Uses extractDoc and pretty print.
+        :param stream -- stream to print to -- see print.pprint for details
+        :param width: -- width of screen for printing. Default is 120.
+        :return: Nada
+        """
+        import pprint
+
+        pprint.pprint(self.extractDoc(),stream=stream,width=width,compact=True,sort_dicts=False)
+
 
 
 class OptClimConfigVn3(OptClimConfigVn2):

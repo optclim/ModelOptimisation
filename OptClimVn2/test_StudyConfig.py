@@ -133,6 +133,21 @@ class testStudyConfig(unittest.TestCase):
         for k, scale in zip(covKeys, [1, 0.1, 0.9]):
             self.assertTrue(cov[k].equals(c * scale), msg=f"{k} does not match")
 
+    def test_readCovariances(self):
+        """
+        Test that readCovariances fails when obs are bad. (and any other tests that seem reasonable)
+        :return: nada
+        """
+        # verify we can read a file OK.
+        covInfo =  self.config.getv('study', {}).get('covariance')
+        covFile=covInfo['CovObsErr']
+        cov=self.config.readCovariances(covFile)
+        # now with obsNames not in covariance index.
+        with self.assertRaises(ValueError):
+            got = self.config.readCovariances(covFile,obsNames=['one','two'])
+
+
+
     def test_version(self):
         """
         Test the version is 2 as expected
@@ -232,7 +247,7 @@ class testStudyConfig(unittest.TestCase):
         Test targets are as expected
         :return: 
         """
-        # values below are cut-n-paste from input json file!
+        # values below are cut-n-paste from some input json file!
         tgt = pd.Series({"rsr_nhx": 102.276779013,
                          "rsr_tropics": 94.172585284,
                          "rsr_shx": 108.113226173,
@@ -263,13 +278,16 @@ class testStudyConfig(unittest.TestCase):
 
         # test we can set value for target.
         set_tgt = pd.Series(dict(obs1=10, obs2=5, obs3=7))
-        self.config.obsNames(set_tgt.index.tolist())  # set obsNames
+        self.config.obsNames(set_tgt.index.tolist())  # set obsNames to be the target
         self.config.constraint(False)  # do not want constraint
         self.config.targets(targets=set_tgt)  # set the tgt
-        # having trouble with constraint here...Two options -- ignore it by passing in the obsNames explicitly.
-        # or set constraint to
         got = self.config.targets()
         self.assertTrue(set_tgt.equals(got), 'Target differs when passed in')
+
+        # test that missing an ob causes problems.
+        self.config.obsNames(['RSR','olr','olrc'])
+        with self.assertRaises(ValueError):
+            got = self.config.targets()
 
     def test_Fixed(self):
         """
@@ -362,7 +380,7 @@ class testStudyConfig(unittest.TestCase):
 
     def test_obsNames(self):
         """
-        Test obsnames works
+        Test obsNames works
         :return:
         """
 
@@ -378,7 +396,8 @@ class testStudyConfig(unittest.TestCase):
         # and set names.
         newNames = ['obs1', 'obs2', 'obs3']
         got = self.config.obsNames(obsNames=newNames)
-        got = self.config.obsNames()
+        got = self.config.obsNames() # got will include the constraint name here
+        newNames.append(self.config.constraintName())
         self.assertEqual(got, newNames)  # we should get the names back
 
     def test_paramNames(self):
@@ -742,6 +761,43 @@ class testStudyConfig(unittest.TestCase):
         got = self.config.hessian()
         self.assertTrue(hessian.equals(got))
 
+    def test_optimise(self):
+        """
+        Test can get back the whole optimise object (and set it)
+        :return:
+        """
+
+        opt = self.config.optimise() # should be a dict
+        self.assertEqual(type(opt),dict)
+        # set a value
+        opt2 = self.config.optimise(maxIterations=10)
+        self.assertEqual(opt2['maxIterations'],10) # value as expected
+        opt3 = self.config.optimise() # get it back. Should have changed.
+        self.assertEqual(opt2['maxIterations'], 10)
+
+    def test_scales(self):
+        """
+        Test scaling works as expected
+        Tests:
+            1) get expected values.  1 for values not specified. actaul value for values specified
+            2) Can set values. With 1's ignored.
+            :return:nada
+        """
+
+        expected =pd.Series({key:self.config.Config['scalings'].get(key,1.0) for key in self.config.obsNames()})
+        got = self.config.scales()
+        nptest.assert_array_equal(expected,got)
+        # set some values
+        test_scales = dict(one=2,two=1,three=4)
+        obsNames= test_scales.keys()
+        expect = pd.Series(test_scales)
+        # get an error because obsNames differ.
+        with self.assertRaises(ValueError):
+            scales = self.config.scales(test_scales)
+        scales = self.config.scales(test_scales,obsNames=obsNames)
+        nptest.assert_array_equal(scales,expect)
+        scales = self.config.scales(dict(one=2,three=4),obsNames=obsNames)
+        nptest.assert_array_equal(scales, expect)
 
 if __name__ == "__main__":
     print("Running Test Cases")
