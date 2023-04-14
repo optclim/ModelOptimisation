@@ -1,0 +1,41 @@
+#!/bin/bash
+#
+# to be called by user in login node
+# enables builds - done on login node
+# Note: The environmant used for CESM is built from the config* files by CIME scripts.
+#
+# This lets us choose a python and perl version for use in creating tests
+# We need 2.7 for some ensemble tests 
+
+#Lmodule load PrgEnv-gnu
+
+#Lmodule load  cray-hdf5-parallel
+
+#Lmodule load cray-netcdf-hdf5parallel
+
+#Lmodule use /work/n02/shared/mjmn02/sw/modules
+
+#Lmodule load conda_cesm_36_1
+
+#Lmodule load add_ld
+
+# I choose to run cases here - not used by CIME/CESM
+
+#export MY_CESM_TOP=/work/n02/shared/mjmn02/cesm/cases
+#export MY_CESM_INPUTS=/work/n02/shared/mjmn02/cesm/cases/cesm_inputdata
+
+# I choose to run tests here - not used by CIME/CESM
+
+#export MY_CESM_TOP=/work/n02/shared/mjmn02/cesm/prealpha
+#export MY_CESM_INPUTS=/work/n02/shared/mjmn02/cesm/prealpha/cesm_inputdata
+# modify for each prealpha etc.
+#mkdir -p $MY_CESM_TOP $MY_CESM_INPUTS
+
+          # define CIME directory and the model name we are using
+    export CIMEROOT="/work/n02/shared/mjmn02/cesm/CESM2.1.3/my_cesm_sandbox/cime"
+    export CIME_MODEL="cesm"
+
+
+    
+
+
