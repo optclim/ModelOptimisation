@@ -5,9 +5,9 @@ This branch includes the code and simple demonstration of the use of OptClim2
 Warning: This code is research quality and probably not yet suitable for production without support from those who have developed it.
 All code is available on a GPLv3 license. See License.
  
- The following arre related repositories:
- - https://github.com/SimonTett/OptClim_UKESM : an example under development of using OptCLim2 with UKESM.... for real science!
- - https://github.com/Climate-Particle-Filtering : CLiamte Particle Filtering -  related develoment that has taken wings and flown to its own nest.
+ The following are related repositories:
+ - https://github.com/SimonTett/OptClim_UKESM : an example  of using OptClim2 with UKESM
+ - https://github.com/Climate-Particle-Filtering : Climate Particle Filtering -  related development that has taken wings and flown to its own nest.
  
  In addition: code for an in-development OptClim3 which is not yet running on ARCHER2 or with climate models - a foundation for future work is at:
     - https://github.com/optclim/ObjectiveFunction-server
