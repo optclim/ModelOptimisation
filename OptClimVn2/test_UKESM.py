@@ -1,9 +1,9 @@
 """
-test_MITgcm: test cases for MITgcm.py methods.
+test_UKESM: test cases for UKESM.py methods.
   Beware - some methods are in the ModelOptimsation class
   THis module attempts a tailoring of test_HadCM3.py  with minimal added changes.
   in ModelOptimisation run:
-   pytest -s OptClimVn2/test_MITgcm.py 
+   pytest -s OptClimVn2/test_UKESM.py 
        if you want print output visible. Else leave out the "-s"
 """
 import collections
@@ -18,14 +18,17 @@ import pathlib  # TODO move towards using pathlib away from os.path.xxxx
 import numpy as np
 import pandas as pd
 
-import MITgcm
+import UKESM
 import optClimLib
+import json
 
-OBS_LIST= [ "dynstat_theta_mean", "dynstat_salt_mean", "seaice_area_mean" ]
-PAR_LIST= ["gravity", "SEAICE_STRENGTH"]
+OBS_LIST= ["iau_nontrop_max_p_tst", "diagcloud_qn_compregimelimit_tst"]
+
+PAR_LIST= ["iau_nontrop_max_p", "diagcloud_qn_compregimelimit" ]
+PAR_INIT= {"iau_nontrop_max_p": 420000.0, "diagcloud_qn_compregimelimit": 20.0}
 PPEXE="optclim_finished"
-REFERENCE_RUNDIR="/work/n02/shared/mjmn02/OptClim/optclim3/studies/ecco/Exampdfols_TestRunKeep"
-
+REFERENCE_RUNDIR="UKESM/input_pytest/exa1"
+# run in ModelOptimsation.
 def cmp_lines(path_1, path_2, ignore=None, verbose=False):
     """
     From Stack exchange --
@@ -57,9 +60,9 @@ def cmp_lines(path_1, path_2, ignore=None, verbose=False):
     return True
 
 
-class testMITgcm(unittest.TestCase):
+class testUKESM(unittest.TestCase):
     """
-    Test cases for MITgcm. There should be one for every method in MITgcm.
+    Test cases for UKESM. There should be one for every method in UKESM.
 
     """
 
@@ -68,13 +71,13 @@ class testMITgcm(unittest.TestCase):
         Setup case
         :return:
         """
-        parameters = {"gravity": 10.0, "SEAICE_STRENGTH": 0.5}
+        parameters = PAR_INIT
                       
 
         tmpDir = tempfile.TemporaryDirectory()
         testDir = pathlib.Path(tmpDir.name)  # used throughout.
         #refDir="/work/n02/shared/mjmn02/OptClim/optclim2A/ModelOptimisation/ECCOv4"
-        refDir="/work/n02/shared/mjmn02/OptClim/optclim3/base/ecco/base1"
+        refDir=None
         #refDir = pathlib.Path('Configurations') / 'xnmea'  # need a coupled model.
         #simObsDir = '/work/n02/shared/mjmn02/OptClim/optclim2A/ModelOptimisation/ECCOv4/pytesting'
         simObsDir = REFERENCE_RUNDIR
@@ -86,13 +89,13 @@ class testMITgcm(unittest.TestCase):
         # simObsDir = os.path.expandvars(os.path.expanduser(simObsDir))
         shutil.rmtree(testDir, onerror=optClimLib.errorRemoveReadonly)
 
-        self.model = MITgcm.MITgcm(testDir, name='a0101', create=True, refDirPath=refDir,
+        self.model = UKESM.UKESM(testDir, name='a0101', create=True, refDirPath=refDir,
                                    ppExePath=PPEXE,
                                    ppOutputFile='observations.json', runTime=1200, runCode='test',
                                    obsNames=OBS_LIST,
                                    verbose=False, parameters=parameters)
-        shutil.copy(os.path.join(simObsDir, 'zd001', 'observations.json'),
-                    os.path.join(testDir, 'observations.json'))  # copy over a netcdf file of observations.
+        shutil.copy(os.path.join(simObsDir, 'xa001', 'observations.json'),
+                    os.path.join(testDir, 'observations.json'))  # copy over simulated observations.
 
 
     def tearDown(self):
@@ -121,7 +124,7 @@ class testMITgcm(unittest.TestCase):
         # using implicit run of setup.
         expectObs = collections.OrderedDict()
         for k in OBS_LIST: expectObs[k] = None
-        expectParam = {"gravity": 10.0, "SEAICE_STRENGTH": 0.5}
+        expectParam = PAR_INIT
         self.assertEqual(self.model.get(['name']), 'a0101')
         self.assertEqual(self.model.get(['ppExePath']),PPEXE)
         self.assertEqual(self.model.get(['observations']), expectObs)
@@ -132,7 +135,7 @@ class testMITgcm(unittest.TestCase):
         # we copied in an observables at end of the setup.... rea dit here and see
         # we have some differnet data but same keys
 
-        m = MITgcm.MITgcm(self.dirPath, verbose=True)
+        m = UKESM.UKESM(self.dirPath, verbose=True)
         # Nothing should have changed except observations have been read in
         self.assertEqual(m.get(['name']), 'a0101')
         self.assertEqual(m.get(['ppExePath']), PPEXE)
@@ -146,22 +149,21 @@ class testMITgcm(unittest.TestCase):
 
     def test_readMetaParams(self):
         """
-        Test that MITgcm specific meta functions all work..by running the inverse function and checking we got
+        Test that UKESM specific meta functions all work..by running the inverse function and checking we got
           what we put in.
         :return:
         """
-        pass;  # not got any yet in MITgcm-ECCO 
+        pass;  # not got any yet in UKESM
 
     def test_setParams(self):
         """
         Test setParams
         :return:
         """
-        # will test that can set namelist variables, that setting something that doesn't exist fails.
-#        import pdb;pdb.set_trace() 
+#        import pdb;pdb.set_trace()  # used to follow the code and try to understand what it is doing
         self.model.setReadOnly(False)  # want to modify model.
         # param is dict of parmaetrs that map directly to namelist variables.
-        param = {"gravity": 19.0, "SEAICE_STRENGTH": 1.5}
+        param = PAR_INIT
         metaParam = {}
         un = collections.OrderedDict()
         for k, v in param.items():
@@ -174,32 +176,21 @@ class testMITgcm(unittest.TestCase):
             expect[k] = v
 
         self.model.setParams(un, fail=True, verbose=True)
-        # verify namelists are as expected.
-        vars = self.model.readNameList(expect.keys(), verbose=True, fail=True)
 
-        for k in expect.keys():
-            msg = 'Key is %s' % (k)
-            print("vars[%s]=%s got %s" % (k, vars[k], expect[k]))
-            if type(expect[k]) == list:
-                self.assertEqual(vars[k], expect[k], msg=msg)
-            else:
-                self.assertAlmostEqual(expect[k], vars[k], msg=msg)
+        # for UKESM just written runParams.json and file state
+        # and need the paramters in the config
 
-        # check pd.Series works
-        series = pd.Series(un)
-        series['gravity'] = 10.0
-        expect['gravity'] = 10.0
-        self.model.setReadOnly(False)  # want to modify model
-        self.model.setParams(series, fail=True, verbose=True)
-        # verify namelists are as expected.
-        vars = self.model.readNameList(expect.keys(), verbose=True, fail=True)
+        with open (os.path.join(self.dirPath, 'runParams.json'), "r") as rpf:
+            rpfread=rpf.read()
+        rpfdata=json.loads(rpfread)
+        
+        for k, v in param.items():
+            self.assertEqual(rpfdata[k],un[k])
 
-        for k in expect.keys():
-            print("vars[%s]=%s got %s" % (k, vars[k], expect[k]))
-            if type(expect[k]) == list:
-                self.assertEqual(vars[k], expect[k], msg=msg)
-            else:
-                self.assertAlmostEqual(expect[k], vars[k], msg=msg)
+        with open (os.path.join(self.dirPath, 'state'),"r") as stf:
+            sftdata=stf.read()
+
+        self.assertEqual(sftdata,"NEW")
 
     def notest_modifyScript(self):
         """
@@ -226,11 +217,11 @@ class testMITgcm(unittest.TestCase):
         :param self:
         :return:
         """
-        print (" MITgcm script is not changed - not testing")
+        print (" UKESM script is not changed - not testing")
 
 
     def check_script(self, print_output=False, runType='CRUN', expect=None, expectMod=None):
-        print (" MITgcm script is not changed - not testing")
+        print (" UKESM script is not changed - not testing")
 
     def notest_genContSUBMIT(self):
         """
@@ -248,7 +239,7 @@ class testMITgcm(unittest.TestCase):
         # just check it exists and is a dir
         self.assertTrue(os.path.isdir(self.model.dirPath))
            # if comparing with HadCM£ then it creates a subdirectory W.
-           # not done with MITgcm.
+           # not done with UKESM.
 
     def test_fixClimFCG(self):
         """
@@ -259,7 +250,7 @@ class testMITgcm(unittest.TestCase):
         """
         print (" fixClimFCG not used - HadAM3 only genContSUBMIT") 
 
-    def test_submit(self):
+    def notest_submit(self): # not used in UKESM when the define - clone- modify-run are loose coupled.
         """
         Test the submit method works -- returns sensible path.
         Rather trivial test.. 
@@ -275,11 +266,13 @@ class testMITgcm(unittest.TestCase):
           Need to look at namelists so a bit tricky...
         :return:
         """
-        print (" perturb not used - HadAM3 only genContSUBMIT") 
+        print (" perturb not used - HadAM3 only ") 
 
     def test_createPostProcessFile(self):
         """
         Test that creation of post processing script works.
+        This is run when a model completes,to release the job.
+        Here left hadCM3 on Eddie as the text string s we are not system testing,.
 
         :return:
         """

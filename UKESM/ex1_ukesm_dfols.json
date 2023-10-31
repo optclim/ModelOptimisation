@@ -7,7 +7,7 @@
   "version_comment":"Version ID",
   "Name":"XSTUDYNAMEX",
   "Name_comment":"Study Name",
-  "baseRunID":"yd",
+  "baseRunID":"xa",
   "baseRunID_comment":"base for runID. Only first two characters are generally used.",
   "runTime":null,
   "runTime_comment":"Time in seconds for run. If null then default value will be used.",

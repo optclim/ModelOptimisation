@@ -1,40 +1,20 @@
+This code branch includes additions to support the CESM2, UKESM and MITgcm-based models on Archer2.
+Documentation is in this GitHub wiki.
 
-tools/runAlgorithm.py is a python script that runs an optimisation or other algorithm-- it is controlled by a json file
-see Configurations/example.json or Configurations/example_dfols.json
-
-Installation:
-
-1) Put the code somewhere convenient.
-2) Define in your environment OPTCLIMTOP where ever this is.
-3) Put $OPTCLIMTOP/OptClimVn2 and $OPTCLIMTOP/tools/optFunctions (and DFOLS and what ever else needed by your optimisation algorithm ) in your python search path.
-4) Add $OPTCLIMTOP/tools to your PATH.
-
-Works at python 3.8.  *May* work at python 3.7+. Needs dicts that are ordered.
-You also need the following modules (generally available from conda-forge but could be installed via pip)
-f90nml
-pandas
-matplotlib
-xarray
-netCDF4
-numpy
-
-+ dfols (pip) pip install DFO-LS (See https://github.com/numericalalgorithmsgroup/dfols/)
-If you want to use pysot (which has not been tested) then you will need to install that too (see https://pypi.org/project/pySOT/)
-
-Testing:
-run pytest in OptClimVn2 in OPTCLIMTOP. There are about 120 tests. One in test_Optimise may fail. If so run it again...
-
-To test runAlgorithm.py you need to do the following in ipython in OPTCLIMTOP:
-import tempfile
-tdir=tempfile.TemporaryDirectory() # gives you a temp directory.
-%run -i tools/runAlgorithm --restart  --test -d $tdir.name Configurations/dfols14param.json
-# This will run continually run until the algorithm has finished.
-
-For porting you will need to modify (or add new )  code  so that it uses the correct submission method & model class.
-OptClimVN2 provides classes/methods for you. See README in that directory.
-tools contains some other potentially useful tools...
-
-OptClimVn2/config.py contains a lookup table for models.
-
-Warning: This code is research quality and probably not really suitable for production. I am happy to collaborate with others to make it more useful.
+This branch includes the code and simple demonstration of the use of OptClim2
+Warning: This code is research quality and probably not yet suitable for production without support from those who have developed it.
 All code is available on a GPLv3 license. See License.
+ 
+ The following are related repositories:
+ - https://github.com/SimonTett/OptClim_UKESM : an example  of using OptClim2 with UKESM
+ - https://github.com/Climate-Particle-Filtering : Climate Particle Filtering -  related development that has taken wings and flown to its own nest.
+ 
+ In addition: code for an in-development OptClim3 which is not yet running on ARCHER2 or with climate models - a foundation for future work is at:
+    - https://github.com/optclim/ObjectiveFunction-server
+    -  https://github.com/optclim/ObjectiveFunction-client
+    -  https://github.com/optclim/ModelOptimisation2
+    - https://github.com/optclim/DummyModel
+ 
+ 
+
+

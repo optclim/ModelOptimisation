@@ -1,0 +1,28 @@
+#!/bin/bash
+# Batch system directives
+{{ batchdirectives }}
+# added in template file:
+#SBATCH --time=00:10:00
+#SBATCH --nodes=1
+#SBATCH --mem=4G
+#SBATCH --tasks-per-node=1
+#SBATCH --output={{ job_id }}.%j
+#echo Running  $@
+pwd
+ls
+
+./xmlquery RESUBMIT CONTINUE_RUN STOP_OPTION   STOP_N    RESUBMIT  
+
+# ifESBMIT >0  and CONTINUE_RUN =FALSE and job seems ok then
+# CONTINUE_RUN=TRUE and case.submit
+# else
+
+OPTFINISHED='optclim_finished'
+if [[ -f $OPTFINISHED ]]
+then
+  ls -l $OPTFINISHED
+  bash $OPTFINISHED
+else
+  echo OPTFINISHED not found: $OPTFINISHED 
+fi
+

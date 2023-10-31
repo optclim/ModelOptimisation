@@ -1,13 +1,16 @@
 #!/bin/bash
 
-#
-# -- This command accepts a filename as the first positional argument
-# --- Otherwise it will try to use STDOUT.0000 as the filename
-#
+###########################################
+# Run at end of a model to extract 3 simulated observables from STDOUT.0000
+# A very artificial example - usually an analysis of data woul dbe done - this
+# is just a simple way to generate numbers
+# config.py sets up an array of jobs one per model instance.
+# $OPTCLIMTOP/archer2/postProcess.slurm is the slurm script for that array.
+# within it the arguments for the script in this file are picked out:
+# arg1: the json file for the study - not used in this example.
+# arg2: the output file into which simulated observations are to be written.
+###########################################
 
-###########################################
-# Script to check ECCOv4-r4 runs for eCSE #
-###########################################
 filename=STDOUT.0000
 
 if test -z "$1" 
