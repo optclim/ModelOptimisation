@@ -38,7 +38,7 @@
  cd $new_suite
 
  cp rose-suite.conf orig-rose-suite.conf
- sed -i -e "s/xxxx/${OPTCLIM_RUN_DIR}/g" rose-suite.conf
+ sed -i -e "s|xxxx|${OPTCLIM_RUN_DIR}|g" rose-suite.conf
 
  echo in new suite $new_suite made following differences:
  diff orig-rose-suite.conf rose-suite.conf 

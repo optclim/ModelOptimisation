@@ -9,13 +9,14 @@
  shift
 
  optclim_study=$(basename ${OPTCLIM_STUDY_DIR})
+ echo $0: $OPTCLIM_STUDY_DIR  $OPTCLIM_BASE_SUITE
 while (($#)) ; do
 
    #...
      ARUN=$1
      shift
      echo ARUN $ARUN
-     cd /home/$USER/roses
+     cd /home/n02/n02/$USER/roses
 
      new_suite=${ARUN}_${OPTCLIM_BASE_SUITE}
 
