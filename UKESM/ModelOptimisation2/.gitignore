@@ -1,0 +1,7 @@
+*~
+.mypy_cache/
+tests/__pycache__/
+ModelOptimisation2/__pycache__/
+ModelOptimisation2.egg-info/
+build/
+dist/

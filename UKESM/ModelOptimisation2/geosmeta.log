@@ -1,0 +1,8 @@
+2022-03-03 12:34:06,550 - tool - DEBUG - Logging configured
+2022-03-03 12:34:06,551 - tool - DEBUG - Logging configured
+2022-03-03 12:34:06,553 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.geos.ed.ac.uk:443
+2022-03-03 12:34:06,648 - urllib3.connectionpool - DEBUG - https://www.geos.ed.ac.uk:443 "GET /geosmeta/activities?where=%7B%22%24and%22%3A%5B%7B%22project%22%3A+%22P1%22%7D%2C%7B%22gmdata.optclim_rose_type%22%3A%22suiteRequest%22%2C%22gmdata.study%22%3A%22or7%22%7D%5D%7D HTTP/1.1" 200 2394
+2022-03-03 13:00:22,332 - tool - DEBUG - Logging configured
+2022-03-03 13:00:22,340 - tool - DEBUG - Logging configured
+2022-03-03 13:00:22,343 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): www.geos.ed.ac.uk:443
+2022-03-03 13:00:23,129 - urllib3.connectionpool - DEBUG - https://www.geos.ed.ac.uk:443 "GET /geosmeta/activities?where=%7B%22%24and%22%3A%5B%7B%22project%22%3A+%22P1%22%7D%2C%7B%22gmdata.optclim_rose_type%22%3A%22suiteRequest%22%2C%22gmdata.study%22%3A%22or7%22%7D%5D%7D HTTP/1.1" 200 3108
