@@ -26,7 +26,7 @@ import numpy as np
 import stat # needed to change file permission bits.
 import ModelSimulation
 from ModelSimulation import _namedTupClass
-
+import subprocess
 
 class UKESM(ModelSimulation.ModelSimulation):
     """
@@ -302,6 +302,15 @@ class UKESM(ModelSimulation.ModelSimulation):
         fflag.write("NEW")
         fflag.close() 
         print("written runParams and flag file into %s",self.dirPath)
+
+        pumacmd="/home/n02/n02/mjmn02/dev/ModelOptimisation/Rose/onPUMA/launchArun.sh"
+        # import pdb;pdb.set_trace() 
+
+            # command rundirectory baserunsuite:
+        cloneCmd="ssh puma2 %s %s %s \n" %(pumacmd,self.dirPath,self.refDirPath())
+        subout=subprocess.check_output(cloneCmd, shell=True)  # submit the script
+        print ("puma2 command:%s\n"%cloneCmd)
+        print("subout %s" %subout)
 
         return params_used
 
