@@ -677,9 +677,16 @@ class OptClimConfig(dictFile):
         # compute the matrix that diagonalises total covariance.
         cov = self.Covariances(trace=verbose, scale=scale)  # get covariances.
         errCov = cov['CovTotal']
+        # check for NaNs. If any fail.
+        if errCov.isnull().any().any():
+            print("null values in errCov for", errCov.index[errCov.isnull().any()])
+            raise ValueError("Fix your error covariance")
+
         # compute eigenvector and eigenvalues of covariances so we can transform residual into diagonal space.
         evalue, evect = np.linalg.eigh(errCov)
         # deal with small evalues.
+        if np.isnan(evalue).any(): # any nan. Trigger an error
+            raise ValueError("CovTotal has nan eigenvalues. Is your scaling correct?")
         crit = evalue.max() * minEvalue
         indx = evalue > crit
 
@@ -875,8 +882,11 @@ class OptClimConfig(dictFile):
         :return:the function that creates a model instance
         """
 
-        name = self.getv("modelName", None)
-        return fnTable.get(name)
+        name = self.getv("modelName")
+        fn=fnTable.get(name)
+        if fn is None:
+            raise ValueError(f"Failed to find {name} in fnTable. Known models are {' '.join(list(fnTable.keys()))}")
+        return fn
 
     def submitFunction(self, fnTable):
 

@@ -152,7 +152,6 @@ class runSubmit(Submit.ModelSubmit):
             raise exceptions.runModelError
         if not df:  # want it as values not  a dataframe
             result = np.squeeze(result.values)
-
         return result
 
     def genOptFunction(self, **kwargs):
