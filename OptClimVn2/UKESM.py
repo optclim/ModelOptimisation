@@ -83,7 +83,7 @@ class UKESM(ModelSimulation.ModelSimulation):
         self.SubmitFiles['continue'] = None
         self.postProcessFile = 'optclim_finished' # name of post-processing file
 
-        if create:  # want to create model instance so do creation.
+        # M3 if create:  # want to create model instance so do creation.
             #self.fixClimFCG()  # fix the ClimFGC namelist
 #            self.modifySubmit(runTime=runTime, runCode=runCode)  # modify the Submit script
          #M   self.modifyScript()  # modify Script
@@ -92,7 +92,7 @@ class UKESM(ModelSimulation.ModelSimulation):
 
             #M not sure this next is wanted still... whats happening...
 
-            self.createPostProcessFile("# No job to release")
+            #M3self.createPostProcessFile("# No job to release")
             # this means that the model can run without post-processing
             # as this bit of code also allows the model to resubmit from an NRUN
 
