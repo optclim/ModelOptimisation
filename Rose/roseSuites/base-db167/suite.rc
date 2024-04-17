@@ -69,6 +69,7 @@
         {% set INIT_GRAPH = INIT_GRAPH ~ 'install_cold => install_ancil' %}
         {% set INIT_GRAPH = INIT_GRAPH ~ ' => recon' if TASK_RECON else INIT_GRAPH %}
         {% set INIT_GRAPH = INIT_GRAPH ~ ' => atmos_main' if TASK_RUN else INIT_GRAPH %}
+        {% set INIT_GRAPH = INIT_GRAPH ~ ' => optclim_postrun ' if TASK_OPTCLIM else INIT_GRAPH %}
 
         [[[ R1 ]]]
             graph = {{ INIT_GRAPH }}
@@ -267,6 +268,8 @@
         script = """
             echo optclim_reuse:  DATASHR  ${DATASHR}
             echo optclim_reuse:  SRCSHR  ${SRCSHR}
+            echo check quota
+            lustrequota  
 
             mkdir -p $DATASHR/fcm_make_um/extract/um/bin
             rsync -rv $SRCSHR/fcm_make_um/extract/um/bin/* $DATASHR/fcm_make_um/extract/um/bin
