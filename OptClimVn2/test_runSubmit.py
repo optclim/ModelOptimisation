@@ -446,7 +446,7 @@ class testRunSubmit(unittest.TestCase):
                     self.assertEqual(nobs + 1, nModels, f'Expected to have {nobs + 1} models ran on iteration#1')
 
         best = finalConfig.optimumParams()
-        df = df.append(best.rename('DFOLS'))
+        df =pd.concat([df,pd.DataFrame(best.rename('DFOLS'))])
         transJac = pd.DataFrame(solution.jacobian, index=varParamNames, columns=Tmat.index)
         finalConfig.transJacobian(transJac)  # set the transformed Jacobian
 

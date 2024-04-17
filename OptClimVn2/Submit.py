@@ -726,7 +726,7 @@ class ModelSubmit(object):
             # got some obs so store them!
             key = self.genKey(params.to_dict())
             # will trigger error if params is None (or technically does not have a to_dict() method)
-            s = obs.append(params).rename(obs.name)
+            s = pd.concat([obs,params]).rename(obs.name)
             self._paramObs[key] = s
 
         # now to return values.

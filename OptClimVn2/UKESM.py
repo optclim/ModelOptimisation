@@ -26,7 +26,7 @@ import numpy as np
 import stat # needed to change file permission bits.
 import ModelSimulation
 from ModelSimulation import _namedTupClass
-
+import subprocess
 
 class UKESM(ModelSimulation.ModelSimulation):
     """
@@ -83,7 +83,7 @@ class UKESM(ModelSimulation.ModelSimulation):
         self.SubmitFiles['continue'] = None
         self.postProcessFile = 'optclim_finished' # name of post-processing file
 
-        if create:  # want to create model instance so do creation.
+        # M3 if create:  # want to create model instance so do creation.
             #self.fixClimFCG()  # fix the ClimFGC namelist
 #            self.modifySubmit(runTime=runTime, runCode=runCode)  # modify the Submit script
          #M   self.modifyScript()  # modify Script
@@ -92,7 +92,7 @@ class UKESM(ModelSimulation.ModelSimulation):
 
             #M not sure this next is wanted still... whats happening...
 
-            self.createPostProcessFile("# No job to release")
+            #M3self.createPostProcessFile("# No job to release")
             # this means that the model can run without post-processing
             # as this bit of code also allows the model to resubmit from an NRUN
 
@@ -302,6 +302,15 @@ class UKESM(ModelSimulation.ModelSimulation):
         fflag.write("NEW")
         fflag.close() 
         print("written runParams and flag file into %s",self.dirPath)
+
+        pumacmd="/home/n02/n02/mjmn02/dev/ModelOptimisation/Rose/onPUMA/launchArun.sh"
+        # import pdb;pdb.set_trace() 
+
+            # command rundirectory baserunsuite:
+        cloneCmd="ssh puma2 %s %s %s \n" %(pumacmd,self.dirPath,self.refDirPath())
+        subout=subprocess.check_output(cloneCmd, shell=True)  # submit the script
+        print ("puma2 command:%s\n"%cloneCmd)
+        print("subout %s" %subout)
 
         return params_used
 
