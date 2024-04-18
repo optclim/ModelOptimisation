@@ -586,7 +586,7 @@ class testRunSubmit(unittest.TestCase):
         covTotal = covTotal / (var_scales ** 2)  # taking advantage of diagonal covariance.
         configData.Covariances(CovTotal=covTotal, CovIntVar=0.1 * covTotal,
                                CovObsErr=0.9 * covTotal)  # set total covar.
-        tgt = configData.targets(scale=False)
+        tgt = configData.targets(scale=False).values
         if scale:
             scales = configData.scales().values
         else:
@@ -598,6 +598,7 @@ class testRunSubmit(unittest.TestCase):
 
         def fn_opt(params):
             result = config.bare_fn(params, config=configData, var_scales=var_scales)
+            #breakpoint()
             result -= tgt  # remove tgt TODO consider if needed?
             result *= scales  # scale
             result = result @ Tmat.T.values  # apply transformation.

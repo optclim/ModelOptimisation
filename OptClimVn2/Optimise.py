@@ -241,7 +241,7 @@ def calcErr(simulated, observations, cov=None):
         delta = lsimulated[i,] - observations
         err[i] = (delta.dot(inv_cov)).dot(delta)
 
-    err = np.sqrt(err / np.float(nobs))  # root mean square.
+    err = np.sqrt(err / float(nobs))  # root mean square.
     return err
 
 
@@ -393,7 +393,7 @@ def doGaussNewton(param_value, param_range, UM_value, obs, cov=None,
         deltaParam = param_value[i + 1, :] - param_value[0, :]
         non_zero = (deltaParam != 0.0)  # logical array True where non-zero. Probably need to be FP aware...
         assert np.sum(non_zero) == 1  # should only have one parameter changed..
-        paramIndex[i] = np.where(non_zero)[0]  # work out which parameter was actually changed
+        paramIndex[i] = np.where(non_zero)[0][0]  # work out which parameter was actually changed
         dParam = deltaParam[non_zero] * param_scale[non_zero]  # change in param after scaling.
         Jacobian[i, :] = (use_UM_value[i + 1, :] - UM) / dParam[0]
 

@@ -389,7 +389,7 @@ class testSubmit(unittest.TestCase):
         # store an obs and get it back again.
         params = pd.Series({'VF1': 2.0, 'Experiment': 'COupled', 'EnsembleMember': 2})
         obs = pd.Series({'OLR': 230.3432, 'RSR': 120.332, 'NetFlux': 0.5}).rename('Run1')
-        expect = obs.append(params)
+        expect = pd.concat([obs,params])
         gobs = self.mSubmit.paramObs(params=params, obs=obs)
         self.assertTrue(np.all(gobs == expect))
         # test read works
@@ -405,7 +405,7 @@ class testSubmit(unittest.TestCase):
             obs.NetFlux = float(indx)
             obs = obs.rename('run' + str(indx))
             params.VF1 = float(indx)
-            obsL.append(obs.append(params).rename(obs.name))
+            obsL.append(pd.concat([obs,params]).rename(obs.name))
             self.mSubmit.paramObs(params, obs)
 
         df = pd.DataFrame(obsL)

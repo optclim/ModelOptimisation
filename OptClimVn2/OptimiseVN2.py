@@ -561,7 +561,7 @@ def calcErr(simulated, observations, cov=None):
         delta = lsimulated[i,] - observations
         err[i] = (delta.dot(inv_cov)).dot(delta)
 
-    err = np.sqrt(err / np.float(nobs))  # root mean square.
+    err = np.sqrt(err / float(nobs))  # root mean square.
     return err
 
 

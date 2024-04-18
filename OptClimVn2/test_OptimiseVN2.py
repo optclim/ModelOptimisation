@@ -37,7 +37,7 @@ def optfunction(params, *extraArgs, randomScale=1e-9, **kwargs):
         maxSeed = 2 ** (32 - 8) - 1  # allow up to 256 ensembleMembers -- might work beyond this...
         for x in range(0, params.shape[0]):  # iterate over params.
             seed = 0
-            seed += int(np.product(params[x, :]).view(np.uint64))
+            seed += int(np.prod(params[x, :]).view(np.uint64))
             seed += int(np.sum(params[x, :]).view(np.uint64))
             while (seed > maxSeed):
                 seed = seed // 2
